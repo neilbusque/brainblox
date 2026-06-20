@@ -10,7 +10,6 @@ import { createHud } from "./hud.js";
 import { createProgress } from "./progress.js";
 import { sfx, unlockAudio } from "./audio.js";
 import { onEvent as achEvent } from "./achievements.js";
-import * as profile from "./profile.js";
 
 const TOTAL = 10;
 
@@ -59,8 +58,6 @@ export function startArcade(onHome) {
         achEvent("correct_answer");
         achEvent("star_earned");
         achEvent("streak", { streak });
-        profile.addCoins(2);
-        achEvent("coins_changed", { coins: profile.getCoins() });
         if (streak % 3 === 0) { stars++; hud.addStar(); awardXp(15); achEvent("star_earned"); hud.showFlash(`${streak} in a row! Bonus ⭐`, 1100); }
       } else { streak = 0; sfx.wrong(); }
       await sleep(350);

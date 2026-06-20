@@ -25,13 +25,13 @@ const ACHIEVEMENTS = [
   { id: "streak_5", title: "Streak Star", desc: "Get a 5-question streak", emoji: "🔥", category: "Skill Milestones", stat: "bestStreak", threshold: 5 },
 
   // Explorer Badges
-  { id: "world_walker", title: "World Walker", desc: "Visit every building in the Explore World", emoji: "🗺️", category: "Explorer Badges", stat: "buildingsVisited", threshold: 7 },
+  { id: "world_walker", title: "World Walker", desc: "Visit every building in the Explore World", emoji: "🗺️", category: "Explorer Badges", stat: "buildingsVisited", threshold: 8 },
   { id: "hat_3", title: "Hat Collector", desc: "Own 3 hats", emoji: "🎩", category: "Explorer Badges", stat: "hatsOwned", threshold: 3 },
   { id: "hat_all", title: "Fashion Icon", desc: "Own every hat", emoji: "👗", category: "Explorer Badges", stat: "hatsOwned", threshold: 7 },
   { id: "social", title: "Social Butterfly", desc: "Join a multiplayer room", emoji: "🦋", category: "Explorer Badges", event: "room_join" },
 
   // Challenge Badges
-  { id: "coinrush_50", title: "Coin Rush Pro", desc: "Grab 50+ coins in Coin Rush", emoji: "🪙", category: "Challenge Badges", stat: "coinRushBest", threshold: 50 },
+  { id: "coinrush_20", title: "Coin Rush Pro", desc: "Grab 20+ coins in Coin Rush", emoji: "🪙", category: "Challenge Badges", stat: "coinRushBest", threshold: 20 },
   { id: "maze_done", title: "Maze Runner", desc: "Solve the maze", emoji: "🌀", category: "Challenge Badges", event: "maze_complete" },
   { id: "brain_50", title: "Brain Power", desc: "Answer 50 questions right", emoji: "⚡", category: "Challenge Badges", stat: "totalCorrect", threshold: 50 },
   { id: "brain_100", title: "Scholar", desc: "Answer 100 questions right", emoji: "🎓", category: "Challenge Badges", stat: "totalCorrect", threshold: 100 },
