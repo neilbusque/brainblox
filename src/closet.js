@@ -4,6 +4,7 @@
 
 import * as profile from "./profile.js";
 import { sfx } from "./audio.js";
+import { onEvent as achEvent } from "./achievements.js";
 
 const COLORS = [0x5cc6f0, 0xff8e72, 0x5fd69a, 0xffd45e, 0xbfa1ff, 0xff94bc, 0xff5d5d, 0x52e0c4, 0x6b7a99, 0xffffff];
 const HATS = [
@@ -63,7 +64,7 @@ export function startCloset(onHome) {
 
   function pickHat(key, price) {
     if (profile.owns(key)) { profile.setHat(key); sfx.coin(); render(); return; }
-    if (profile.buy(key, price)) { profile.setHat(key); sfx.levelup(); render(); }
+    if (profile.buy(key, price)) { profile.setHat(key); sfx.levelup(); achEvent("hat_bought"); render(); }
     else { sfx.wrong(); const m = document.getElementById("closet-msg"); if (m) { m.textContent = "Not enough coins - play games to earn more!"; setTimeout(() => { if (document.getElementById("closet-msg")) document.getElementById("closet-msg").textContent = ""; }, 1800); } }
   }
 

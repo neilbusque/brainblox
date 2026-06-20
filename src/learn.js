@@ -7,6 +7,7 @@ import { createQuiz } from "./quiz.js";
 import { createHud } from "./hud.js";
 import { createProgress } from "./progress.js";
 import { sfx, unlockAudio } from "./audio.js";
+import { onEvent as achEvent } from "./achievements.js";
 
 const SUBJECTS = [
   { key: "letters", emoji: "🔤", name: "Letters", desc: "ABC & sounds" },
@@ -60,17 +61,20 @@ export function startLearn(onHome) {
         streak++;
         hud.addStar();
         sfx.correct();
+        achEvent("correct_answer");
+        achEvent("star_earned");
+        achEvent("streak", { streak });
         const r = progress.addXp(12);
         hud.setLevel(r.info);
-        if (r.leveledUp) { hud.popLevel(); hud.showFlash(`Level ${r.level}! 🎉`, 1000); sfx.levelup(); }
-        if (streak % 3 === 0) { hud.addStar(); hud.showFlash(`${streak} in a row! ⭐`, 900); }
+        if (r.leveledUp) { hud.popLevel(); hud.showFlash(`Level ${r.level}! 🎉`, 1000); sfx.levelup(); achEvent("level_up", { level: r.level }); }
+        if (streak % 3 === 0) { hud.addStar(); achEvent("star_earned"); hud.showFlash(`${streak} in a row! ⭐`, 900); }
       } else {
         streak = 0;
         sfx.wrong();
       }
       await sleep(300);
     }
-    if (!aborted) showResult(subject, correct);
+    if (!aborted) { achEvent("lesson_complete"); showResult(subject, correct); }
   }
 
   function showResult(subject, correct) {

@@ -7,6 +7,7 @@ import { createScene3d } from "./scene3d.js";
 import { toonMat, markBloom } from "./gfx.js";
 import { sfx } from "./audio.js";
 import { createProgress } from "./progress.js";
+import { onEvent as achEvent } from "./achievements.js";
 
 const N = 6; // cells per side
 const S = 4; // cell size
@@ -93,6 +94,7 @@ export function startMaze() {
     hud.classList.add("hidden");
     sfx.win();
     progress.addXp(50);
+    achEvent("maze_complete");
     const res = document.getElementById("mode-result");
     res.innerHTML = `<div class="result-card">
       <div class="win-emoji">🏆</div>

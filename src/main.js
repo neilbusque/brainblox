@@ -28,7 +28,9 @@ import { startExplore } from "./explore.js";
 import { startCoinRush } from "./coinrush.js";
 import { startMaze } from "./maze.js";
 import { startCloset } from "./closet.js";
+import { startTrophyRoom } from "./trophyRoom.js";
 import * as profile from "./profile.js";
+import { onEvent as achEvent, setToastCallback } from "./achievements.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 
@@ -39,6 +41,24 @@ const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
 
 let current = null; // the mounted activity screen { destroy }
 let playerName = "Player";
+
+// wire achievement toast
+setToastCallback((ach) => {
+  const toast = document.getElementById("ach-toast");
+  if (!toast) return;
+  toast.innerHTML = `<span class="at-emoji">${ach.emoji}</span><span class="at-text"><b>Badge Earned!</b> ${ach.title}</span>`;
+  toast.classList.remove("hidden");
+  toast.classList.remove("at-out");
+  toast.classList.add("at-in");
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.classList.remove("at-in");
+    toast.classList.add("at-out");
+    setTimeout(() => toast.classList.add("hidden"), 400);
+  }, 3000);
+});
+
+achEvent("session_start");
 
 initHub();
 boot();
@@ -78,6 +98,7 @@ const LAUNCHERS = {
   coinrush: () => startCoinRush(),
   maze: () => startMaze(),
   closet: (goHome) => startCloset(goHome),
+  trophies: (goHome) => startTrophyRoom(goHome),
 };
 
 function initHub() {
@@ -223,6 +244,7 @@ function startGame(choice, onHome) {
       return;
     }
     hud.showRoom(choice.code);
+    achEvent("room_join");
     setupInvite(choice.code);
 
     // voice
@@ -290,6 +312,7 @@ function startGame(choice, onHome) {
       hud.showFlash(`Level ${res.level}! 🎉`, 1100);
       sfx.levelup();
       props.spawnConfetti({ x: player.pos.x, y: player.pos.y + 3, z: player.pos.z });
+      achEvent("level_up", { level: res.level });
     }
   }
 
@@ -341,10 +364,14 @@ function startGame(choice, onHome) {
       streak += 1;
       cheerUntil = elapsed + 1.4; // character cheers
       awardXp(20);
+      achEvent("correct_answer");
+      achEvent("star_earned");
+      achEvent("streak", { streak });
       // streak bonus every 3 correct in a row
       if (streak > 0 && streak % 3 === 0) {
         hud.addStar();
         awardXp(15);
+        achEvent("star_earned");
         hud.showFlash(`${streak} in a row! Bonus ⭐`, 1200);
       } else {
         hud.showFlash("Gate open! 🎉", 900);
@@ -422,7 +449,8 @@ function startGame(choice, onHome) {
         hud.setCoins(coinTotal);
         sfx.coin();
         awardXp(got * 2);
-        profile.addCoins(got); // into the persistent wallet (spend in the Closet)
+        profile.addCoins(got);
+        achEvent("coins_changed", { coins: profile.getCoins() });
       }
 
       // collect a power-up
@@ -452,6 +480,11 @@ function startGame(choice, onHome) {
         awardXp(100);
         props.spawnConfetti(world.goal.pos);
         hud.showWin(progress.info().level);
+        achEvent("obby_complete");
+        achEvent("coins_changed", { coins: profile.getCoins() });
+        // perfect run: all checkpoints cleared means no wrong answers
+        const allCleared = world.checkpoints.every((c) => c.cleared);
+        if (allCleared && streak === world.checkpoints.length) achEvent("obby_perfect");
       }
 
       // broadcast my position
