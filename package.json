@@ -17,6 +17,7 @@
   "devDependencies": {
     "puppeteer-core": "^23.11.1",
     "vite": "^5.4.8",
+    "vite-plugin-pwa": "^0.20.5",
     "vitest": "^2.1.2"
   }
 }
