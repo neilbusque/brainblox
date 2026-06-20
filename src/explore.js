@@ -16,6 +16,7 @@ import { createVoice } from "./voice.js";
 import { createRemotePlayers } from "./remotePlayers.js";
 import { colorForId } from "./avatar.js";
 import * as profile from "./profile.js";
+import { onEvent as achEvent } from "./achievements.js";
 
 const HIGH_END = !isTouchDevice() && window.devicePixelRatio < 2.5 && (navigator.hardwareConcurrency || 4) > 4;
 const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
@@ -30,6 +31,7 @@ const ZONES = [
   { key: "coinrush", name: "Coin Rush", emoji: "🪙", img: "icecream", color: 0xffcf3a },
   { key: "maze", name: "Maze", emoji: "🌀", img: "library", color: 0xbfa1ff },
   { key: "closet", name: "My Closet", emoji: "👕", color: 0xff94bc },
+  { key: "trophies", name: "Trophy Room", emoji: "🏆", color: 0xffd23f },
 ];
 
 export function startExplore(onEnter, opts = {}) {
@@ -328,6 +330,7 @@ export function startExplore(onEnter, opts = {}) {
     if (!activePortal) return;
     if (activePortal.soon) { sfx.wrong(); flashSoon(); return; }
     sfx.gate();
+    achEvent("building_visit", { key: activePortal.key });
     onEnter(activePortal.key);
   }
   const onPromptClick = () => enter();

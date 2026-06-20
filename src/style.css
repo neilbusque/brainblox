@@ -1271,3 +1271,34 @@ body {
 .closet-msg { min-height: 22px; margin: 10px 0; font-weight: 800; color: #fff; text-shadow: 0 1px 0 rgba(20,32,63,.4); }
 #closet-done { width: 100%; margin-top: 8px; }
 @media (max-width: 380px) { .closet-hats { grid-template-columns: repeat(3, 1fr); } }
+
+/* ============ TROPHY ROOM ============ */
+#trophies { background: radial-gradient(circle at 50% 18%, #fff4d6, #ffd966 60%, #ffcf3a); flex-direction: column; overflow: auto; }
+.trophy-wrap { width: min(620px, 94vw); text-align: center; padding: max(70px, calc(env(safe-area-inset-top) + 56px)) 0 max(28px, env(safe-area-inset-bottom)); }
+.trophy-title { font-size: clamp(26px, 7vw, 40px); font-weight: 900; color: #fff; margin: 0 0 8px; text-shadow: 2px 0 0 #14203f, -2px 0 0 #14203f, 0 2px 0 #14203f, 0 -2px 0 #14203f; }
+.trophy-progress { font-weight: 900; font-size: 18px; color: #fff; text-shadow: 0 2px 0 rgba(20,32,63,.35); margin-bottom: 10px; }
+.trophy-bar { width: 100%; height: 12px; background: rgba(255,255,255,.4); border-radius: 8px; overflow: hidden; margin-bottom: 18px; }
+.trophy-bar-fill { height: 100%; background: linear-gradient(90deg, #46e39b, #5fc6f0); border-radius: 8px; transition: width .5s ease; }
+.trophy-cat { text-align: left; font-weight: 900; font-size: 16px; color: #fff; margin: 16px 4px 10px; text-shadow: 0 1px 0 rgba(20,32,63,.3); }
+.trophy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.trophy-badge { background: #fff; border-radius: 18px; padding: 16px 10px; box-shadow: 0 5px 0 rgba(27,42,82,.15); display: flex; flex-direction: column; align-items: center; gap: 4px; transition: transform .1s; }
+.trophy-badge.earned { animation: cardpop .35s ease-out; }
+.trophy-badge.locked { background: rgba(255,255,255,.5); }
+.trophy-badge.locked .tb-emoji { filter: grayscale(1); opacity: .35; font-size: 36px; }
+.tb-emoji { font-size: 40px; }
+.tb-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+.tb-desc { font-size: 12px; font-weight: 700; color: #7c8bb5; }
+.trophy-badge.locked .tb-title { color: #9aa5c0; }
+.trophy-badge.locked .tb-desc { color: #b0b8d0; }
+.tb-date { font-size: 11px; font-weight: 700; color: #a0aecc; margin-top: 2px; }
+@media (max-width: 380px) { .trophy-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ============ ACHIEVEMENT TOAST ============ */
+.ach-toast { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; translate: -50% 0; z-index: 90; background: #fff; border-radius: 16px; padding: 10px 18px; box-shadow: 0 6px 24px rgba(27,42,82,.3); display: flex; align-items: center; gap: 10px; pointer-events: none; }
+.ach-toast.at-in { animation: toastIn .4s ease-out forwards; }
+.ach-toast.at-out { animation: toastOut .4s ease-in forwards; }
+.at-emoji { font-size: 32px; }
+.at-text { font-weight: 800; font-size: 15px; color: var(--ink); white-space: nowrap; }
+.at-text b { color: var(--accent); display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+@keyframes toastIn { 0% { opacity: 0; transform: translateY(-20px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-20px); } }

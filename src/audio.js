@@ -74,4 +74,10 @@ export const sfx = {
     const notes = [659, 784, 988, 1319];
     notes.forEach((f, i) => tone(f, i * 0.1, 0.22, "triangle", 0.18));
   },
+  achievement() {
+    tone(784, 0, 0.12, "triangle", 0.18);
+    tone(988, 0.1, 0.12, "triangle", 0.18);
+    tone(1175, 0.2, 0.12, "triangle", 0.2);
+    tone(1568, 0.3, 0.3, "triangle", 0.22);
+  },
 };

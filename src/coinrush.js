@@ -7,6 +7,7 @@ import { toonMat, markBloom } from "./gfx.js";
 import { sfx } from "./audio.js";
 import { createProgress } from "./progress.js";
 import * as profile from "./profile.js";
+import { onEvent as achEvent } from "./achievements.js";
 
 const TIME = 45;
 
@@ -66,6 +67,8 @@ export function startCoinRush() {
     hud.classList.add("hidden");
     sfx.win();
     progress.addXp(collected * 3);
+    achEvent("coinrush_end", { score: collected });
+    achEvent("coins_changed", { coins: profile.getCoins() });
     const res = document.getElementById("mode-result");
     res.innerHTML = `<div class="result-card">
       <div class="win-emoji">${collected >= 18 ? "🏆" : collected >= 8 ? "🎉" : "🪙"}</div>

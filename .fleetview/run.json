@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "runId": "20260620-142223-c6747d",
+  "mode": "Build More",
+  "idea": "Achievements & Badges system - collectible badges earned through gameplay milestones",
+  "target": "",
+  "appDir": "/Users/neilbusque/Documents/Work/Claude/.fleetview-worktrees/brainblox-more-20260620-142223-c6747d",
+  "stack": "Vite + React + TS + Tailwind + Supabase (or Astro for content sites)",
+  "kind": "brownfield",
+  "sessionId": null,
+  "branch": "fleetview/more-20260620-142223-c6747d",
+  "status": "running",
+  "currentStage": "qa",
+  "startedAt": 1781979761000,
+  "endedAt": null,
+  "updatedAt": 1781980257000,
+  "stages": [
+    { "id": "spec", "label": "Spec", "status": "done", "startedAt": 1781979761000, "endedAt": 1781979863000, "note": "Spec written: Achievements & Badges system with ~20 badges, Trophy Room, toast notifications, integration across all game modes" },
+    { "id": "develop", "label": "Develop", "status": "done", "startedAt": 1781979863000, "endedAt": 1781980214000, "note": "Build green: 2 new modules (achievements.js, trophyRoom.js), 8 game modes integrated, npm run build ok" },
+    { "id": "test", "label": "Test", "status": "done", "startedAt": 1781980214000, "endedAt": 1781980257000, "note": "19 tests pass (6 new achievement tests + 13 existing); build green" },
+    { "id": "qa", "label": "QA", "status": "active", "startedAt": 1781980257000, "endedAt": null, "note": "" }
+  ],
+  "artifacts": {
+    "specPath": "/Users/neilbusque/Documents/Work/Claude/.fleetview-worktrees/brainblox-more-20260620-142223-c6747d/spec.md",
+    "repoUrl": null,
+    "liveUrl": null,
+    "prUrl": null,
+    "diffPath": null,
+    "screenshotsDir": null
+  },
+  "result": {
+    "ok": null,
+    "summary": "",
+    "url": null,
+    "branch": null,
+    "prUrl": null,
+    "diffPath": null,
+    "nextSteps": []
+  },
+  "error": null
+}

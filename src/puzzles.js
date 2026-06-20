@@ -5,6 +5,7 @@
 
 import { createProgress } from "./progress.js";
 import { sfx, unlockAudio } from "./audio.js";
+import { onEvent as achEvent } from "./achievements.js";
 
 // The real illustrations live in public/assets/puzzles and are served at the
 // app base (works for both "/" on Vercel and "/brainblox/" on GitHub Pages).
@@ -142,6 +143,7 @@ export function startPuzzles(onHome) {
       fb.className = "puz-feedback good";
       sfx.win();
       progress.addXp(40);
+      achEvent("puzzle_complete");
       // confetti via simple emoji burst
       burst(root);
       setTimeout(() => {
