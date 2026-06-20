@@ -24,6 +24,7 @@ import { startArcade } from "./arcade.js";
 import { startPuzzles } from "./puzzles.js";
 import { startLearn } from "./learn.js";
 import { startRoom } from "./room.js";
+import { startExplore } from "./explore.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 
@@ -43,12 +44,20 @@ async function boot() {
   unlockAudio();
   playerName = choice.name;
   if (choice.mode === "multi") openActivity(() => startRoom(choice, { launchObby }));
-  else showHub();
+  else openExplore();
 }
 
 // launch the multiplayer obby from the room lobby (its own reconnecting world)
 function launchObby(code, name, category) {
   openActivity((goHome) => startGame({ mode: "multi", name, code, category }, goHome));
+}
+
+// the 3D explore world is the solo hub - walk to a building to enter an activity
+function openExplore() {
+  if (current?.destroy) current.destroy();
+  document.getElementById("btn-home").classList.add("hidden"); // the world IS home
+  document.getElementById("hud").classList.add("hidden");
+  current = startExplore((key) => openActivity(LAUNCHERS[key]));
 }
 
 // ---------- hub / world-select + screen router ----------
@@ -76,10 +85,8 @@ function openActivity(launcher) {
 }
 
 function goHome() {
-  document.getElementById("btn-home").classList.add("hidden");
-  if (current?.destroy) current.destroy();
-  current = null;
-  showHub();
+  // returning from an activity drops you back into the 3D explore world
+  openExplore();
 }
 
 function showHub() {

@@ -30,12 +30,12 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,ico,webmanifest}"],
         // keep the heavy generated illustrations OUT of precache (light install);
         // they are cached on first view via runtime caching below.
-        globIgnores: ["**/assets/puzzles/**", "**/assets/scenes/**"],
+        globIgnores: ["**/assets/**"],
         navigateFallback: "index.html",
         runtimeCaching: [
           {
             // generated art (puzzles + scene backdrops) - cache on first view
-            urlPattern: ({ url }) => url.pathname.includes("/assets/puzzles/") || url.pathname.includes("/assets/scenes/"),
+            urlPattern: ({ url }) => url.pathname.includes("/assets/"),
             handler: "CacheFirst",
             options: {
               cacheName: "bb-art",
