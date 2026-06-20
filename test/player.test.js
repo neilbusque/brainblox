@@ -57,8 +57,8 @@ describe("player physics", () => {
     expect(p.grounded).toBe(false);
   });
 
-  it("is blocked horizontally by a wall", () => {
-    // ground + a wall at x = 2 (from x:2..3)
+  it("is blocked horizontally by a tall wall", () => {
+    // ground + a tall wall at x = 2 (from x:2..3, 3 units tall - too tall to step)
     const platforms = [
       ...ground,
       { min: { x: 2, y: -1, z: -5 }, max: { x: 3, y: 3, z: 5 } },
@@ -68,5 +68,32 @@ describe("player physics", () => {
     for (let i = 0; i < 120; i++) updatePlayer(p, 1 / 60, { moveX: 1, moveZ: 0, jump: false }, platforms);
     // should be stopped before entering the wall (wall min.x 2 minus player half)
     expect(p.pos.x).toBeLessThanOrEqual(2 - PLAYER_HALF.x + 0.02);
+  });
+
+  it("auto-climbs a short ledge without jumping (step-up)", () => {
+    // ground at top y=0, plus a long low ledge at x>=2 whose top is y=0.4 (a curb)
+    const platforms = [
+      ...ground,
+      { min: { x: 2, y: -1, z: -5 }, max: { x: 100, y: 0.4, z: 5 } },
+    ];
+    const p = createPlayer({ x: 0, y: 5, z: 0 });
+    settle(p, platforms); // land on the ground first
+    // walk into the curb - should step up onto it, not get stuck
+    for (let i = 0; i < 40; i++) updatePlayer(p, 1 / 60, { moveX: 1, moveZ: 0, jump: false }, platforms);
+    expect(p.pos.x).toBeGreaterThan(3); // climbed up and kept walking past the edge
+    expect(p.pos.y).toBeCloseTo(0.4 + PLAYER_HALF.y, 1); // standing on the higher surface
+    expect(p.grounded).toBe(true);
+  });
+
+  it("does NOT auto-climb a ledge taller than the step height", () => {
+    // a 1.2-tall ledge is too high to step - the player should be blocked
+    const platforms = [
+      ...ground,
+      { min: { x: 2, y: -1, z: -5 }, max: { x: 100, y: 1.2, z: 5 } },
+    ];
+    const p = createPlayer({ x: 0, y: 5, z: 0 });
+    settle(p, platforms);
+    for (let i = 0; i < 60; i++) updatePlayer(p, 1 / 60, { moveX: 1, moveZ: 0, jump: false }, platforms);
+    expect(p.pos.x).toBeLessThanOrEqual(2 - PLAYER_HALF.x + 0.05); // stopped at the wall
   });
 });

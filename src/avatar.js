@@ -1,13 +1,15 @@
-// A blocky Roblox-style humanoid character: head, torso, two arms, two legs,
-// built from rounded boxes. Used for BOTH the local player and remote players.
-// `update(anim, dt)` swings the limbs for running, tucks them for jumping, and
-// adds a gentle idle bob, so movement reads as a real little character.
+// A cel-shaded, chunky chibi character (big head, rounded toy limbs) with a dark
+// toon outline, glossy eyes, a grin, and blush. Used for BOTH the local player
+// and remote players. `update(anim, dt, camera)` swings the limbs for running,
+// tucks them for jumping, and adds a gentle idle bob. API is unchanged:
+// { root, update, setBodyColor }.
 
 import * as THREE from "three";
+import { toonMat, roundedGeo, addOutline } from "./gfx.js";
 
 // distinct bright body colors so players tell each other apart
 export const AVATAR_COLORS = [
-  0xff7b54, 0x4cc9f0, 0x36d399, 0xffd23f, 0xb892ff, 0xff6b9d, 0xff5d5d, 0x52e0c4,
+  0x5cc6f0, 0xff8e72, 0x5fd69a, 0xffd45e, 0xbfa1ff, 0xff94bc, 0xff6b6b, 0x52e0c4,
 ];
 
 export function colorForId(id) {
@@ -16,71 +18,89 @@ export function colorForId(id) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-function roundedBox(w, h, d, color) {
-  // BoxGeometry with a tiny bevel feel via flat shading + slight scale; keeps it
-  // cheap but reads softer than a hard cube.
-  const geo = new THREE.BoxGeometry(w, h, d, 1, 1, 1);
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, metalness: 0.05 });
-  const mesh = new THREE.Mesh(geo, mat);
+function part(w, h, d, color, outline = true) {
+  const mesh = new THREE.Mesh(roundedGeo(w, h, d), toonMat(color));
   mesh.castShadow = true;
+  if (outline) addOutline(mesh);
   return mesh;
 }
 
-// Build a character. Returns { root, update } where root is a THREE.Group whose
-// position you set to player.pos (the group's origin sits at the player center).
-export function createAvatar(bodyColor = 0x4cc9f0, name = "") {
+export function createAvatar(bodyColor = 0x5cc6f0, name = "") {
   const root = new THREE.Group();
+  const skin = 0xffd9b0;
+  const pants = 0x2e3f73;
+  const ink = 0x1b2a52;
 
-  const skin = 0xffe0bd;
-  const pants = 0x2b3a67;
-
-  // torso (center of the group)
-  const torso = roundedBox(0.85, 0.9, 0.5, bodyColor);
-  torso.position.y = 0;
+  // torso (group origin sits at torso center)
+  const torso = part(0.8, 0.84, 0.48, bodyColor);
   root.add(torso);
 
-  // head
-  const head = roundedBox(0.62, 0.6, 0.62, skin);
-  head.position.y = 0.78;
+  // lightened belly stripe (visual interest)
+  const belly = new THREE.Mesh(roundedGeo(0.5, 0.36, 0.06), toonMat(lighten(bodyColor, 0.16)));
+  belly.position.set(0, -0.05, 0.24);
+  root.add(belly);
+
+  // big chibi head
+  const head = part(0.66, 0.66, 0.66, skin);
+  head.position.y = 0.82;
   root.add(head);
 
-  // simple face (two eyes + smile) on the +z face of the head
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1d2b53 });
-  const eyeGeo = new THREE.BoxGeometry(0.1, 0.12, 0.04);
-  const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-  const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-  eyeL.position.set(-0.14, 0.83, 0.32);
-  eyeR.position.set(0.14, 0.83, 0.32);
-  root.add(eyeL, eyeR);
-  const smile = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.06, 0.04), eyeMat);
-  smile.position.set(0, 0.66, 0.32);
+  // face (unlit so it stays crisp) on the +z side of the head
+  const faceInk = new THREE.MeshBasicMaterial({ color: ink });
+  const eyeGeo = new THREE.SphereGeometry(0.075, 12, 12);
+  const specGeo = new THREE.SphereGeometry(0.024, 8, 8);
+  const specMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  for (const sx of [-0.16, 0.16]) {
+    const eye = new THREE.Mesh(eyeGeo, faceInk);
+    eye.scale.z = 0.55;
+    eye.position.set(sx, 0.86, 0.32);
+    root.add(eye);
+    const spec = new THREE.Mesh(specGeo, specMat);
+    spec.position.set(sx - 0.03, 0.9, 0.36);
+    root.add(spec);
+  }
+  // grin
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.024, 8, 16, Math.PI), faceInk);
+  smile.rotation.z = Math.PI; // arc opens downward = smile
+  smile.position.set(0, 0.74, 0.33);
   root.add(smile);
+  // cheeks
+  const cheekMat = new THREE.MeshBasicMaterial({ color: 0xff9ec4, transparent: true, opacity: 0.5 });
+  for (const sx of [-0.24, 0.24]) {
+    const cheek = new THREE.Mesh(new THREE.CircleGeometry(0.07, 16), cheekMat);
+    cheek.position.set(sx, 0.74, 0.325);
+    root.add(cheek);
+  }
 
-  // arms - pivot at the shoulder so they swing nicely
-  function limb(w, h, d, color, px) {
+  // limbs pivot at the shoulder/hip so they swing
+  function limb(w, h, d, color, px, py) {
     const pivot = new THREE.Group();
-    pivot.position.set(px, 0, 0);
-    const mesh = roundedBox(w, h, d, color);
-    mesh.position.y = -h / 2; // hang down from the pivot
+    pivot.position.set(px, py, 0);
+    const mesh = part(w, h, d, color);
+    mesh.position.y = -h / 2;
     pivot.add(mesh);
     root.add(pivot);
     return pivot;
   }
-  const armL = limb(0.26, 0.8, 0.26, bodyColor, -0.56);
-  const armR = limb(0.26, 0.8, 0.26, bodyColor, 0.56);
-  armL.position.y = 0.4;
-  armR.position.y = 0.4;
+  const armL = limb(0.24, 0.74, 0.24, bodyColor, -0.54, 0.36);
+  const armR = limb(0.24, 0.74, 0.24, bodyColor, 0.54, 0.36);
+  const legL = limb(0.3, 0.7, 0.3, pants, -0.2, -0.42);
+  const legR = limb(0.3, 0.7, 0.3, pants, 0.2, -0.42);
+  // rounded shoes
+  for (const leg of [legL, legR]) {
+    const shoe = part(0.34, 0.18, 0.42, 0x1d2b53);
+    shoe.position.set(0, -0.74, 0.06);
+    leg.add(shoe);
+  }
 
-  const legL = limb(0.3, 0.8, 0.3, pants, -0.22);
-  const legR = limb(0.3, 0.8, 0.3, pants, 0.22);
-  legL.position.y = -0.45;
-  legR.position.y = -0.45;
+  // recolorable body meshes (torso + arms + belly)
+  const bodyMeshes = [torso, armL.children[0], armR.children[0], belly];
 
   // optional floating name tag
   let tag = null;
   if (name) {
     tag = makeNameTag(name);
-    tag.position.set(0, 1.5, 0);
+    tag.position.set(0, 1.55, 0);
     root.add(tag);
   }
 
@@ -88,50 +108,62 @@ export function createAvatar(bodyColor = 0x4cc9f0, name = "") {
   function update(anim, dt, camera) {
     t += dt;
     if (anim === "run") {
-      const s = Math.sin(t * 12) * 0.9;
+      const s = Math.sin(t * 12) * 0.95;
       legL.rotation.x = s;
       legR.rotation.x = -s;
       armL.rotation.x = -s;
       armR.rotation.x = s;
       torso.position.y = Math.abs(Math.sin(t * 12)) * 0.05;
     } else if (anim === "jump") {
-      // tuck: arms up, legs slightly bent
-      const ease = 0.6;
-      legL.rotation.x = THREE.MathUtils.lerp(legL.rotation.x, -0.5, ease);
-      legR.rotation.x = THREE.MathUtils.lerp(legR.rotation.x, 0.4, ease);
-      armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, -2.2, ease);
-      armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -2.2, ease);
+      const e = 0.6;
+      legL.rotation.x = THREE.MathUtils.lerp(legL.rotation.x, -0.5, e);
+      legR.rotation.x = THREE.MathUtils.lerp(legR.rotation.x, 0.4, e);
+      armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, -2.3, e);
+      armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -2.3, e);
       torso.position.y = 0;
     } else {
-      // idle: ease limbs back to rest + gentle breathing bob
-      const ease = 0.15;
-      for (const l of [legL, legR, armL, armR]) l.rotation.x = THREE.MathUtils.lerp(l.rotation.x, 0, ease);
+      const e = 0.15;
+      for (const l of [legL, legR, armL, armR]) l.rotation.x = THREE.MathUtils.lerp(l.rotation.x, 0, e);
       torso.position.y = Math.sin(t * 2) * 0.03;
     }
-    // billboard the name tag toward the camera
     if (tag && camera) tag.quaternion.copy(camera.quaternion);
   }
 
-  return { root, update, setBodyColor: (c) => torso.material.color.set(c) };
+  function setBodyColor(c) {
+    for (const m of bodyMeshes) m.material.color.set(m === belly ? lighten(c, 0.16) : c);
+  }
+
+  return { root, update, setBodyColor };
+}
+
+function lighten(hex, amt) {
+  const c = new THREE.Color(hex);
+  c.lerp(new THREE.Color(0xffffff), amt);
+  return c.getHex();
 }
 
 function makeNameTag(name) {
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 64;
+  canvas.width = 512;
+  canvas.height = 128;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "rgba(29,43,83,0.85)";
-  roundRect(ctx, 8, 8, 240, 48, 16);
+  ctx.fillStyle = "rgba(20,32,63,0.8)";
+  roundRect(ctx, 12, 16, 488, 96, 30);
   ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  roundRect(ctx, 16, 20, 480, 88, 28);
+  ctx.stroke();
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 30px 'Trebuchet MS', sans-serif";
+  ctx.font = "bold 58px 'Baloo 2', 'Trebuchet MS', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(name.slice(0, 12), 128, 34);
+  ctx.fillText(name.slice(0, 12), 256, 66);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-  sprite.scale.set(1.7, 0.42, 1);
+  sprite.scale.set(1.8, 0.45, 1);
   return sprite;
 }
 

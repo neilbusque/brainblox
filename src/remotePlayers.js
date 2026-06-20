@@ -53,7 +53,9 @@ export function createRemotePlayers() {
     group.remove(p.avatar.root);
     p.avatar.root.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
-      if (o.material) o.material.dispose();
+      // never dispose materials flagged as shared (e.g. the outline material) -
+      // other avatars still use them.
+      if (o.material && !o.material.userData?.shared) o.material.dispose();
     });
     peers.delete(id);
   }

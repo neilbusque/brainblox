@@ -14,12 +14,17 @@ export function createHud() {
   let stars = 0;
   let flashTimer = null;
 
+  const starsEl = starCount.parentElement; // the .hud-stars chip
   function setStars(n) {
     stars = n;
     starCount.textContent = String(n);
   }
   function addStar() {
     setStars(stars + 1);
+    // retrigger the pop animation
+    starsEl.classList.remove("pop");
+    void starsEl.offsetWidth;
+    starsEl.classList.add("pop");
   }
 
   function showFlash(msg, ms = 1200) {

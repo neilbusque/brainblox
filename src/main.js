@@ -16,8 +16,15 @@ import { createNet, MULTIPLAYER_AVAILABLE } from "./net.js";
 import { createRemotePlayers } from "./remotePlayers.js";
 import { createVoice } from "./voice.js";
 import { colorForId } from "./avatar.js";
+import { createProps } from "./props.js";
+import { createPostFX } from "./postfx.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
+
+// Device capability: gate the heavier visuals (bigger shadows, character outline,
+// full-res bloom) so phones stay smooth.
+const HIGH_END = !isTouchDevice() && window.devicePixelRatio < 2.5 && (navigator.hardwareConcurrency || 4) > 4;
+const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
 
 boot();
 
@@ -29,43 +36,57 @@ async function boot() {
 
 function startGame(choice) {
   // ---------- renderer + scene ----------
+  // antialias is off because the composer's SMAA pass handles edges (avoids
+  // paying for MSAA twice). NeutralToneMapping keeps the candy colors punchy.
   const root = document.getElementById("game-root");
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   root.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xbfe6ff, 45, 170);
+  scene.fog = new THREE.Fog(0xdcefff, 60, 200);
   scene.add(makeSky());
 
-  // ---------- lighting ----------
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x6b8cce, 0.9);
+  // ---------- lighting (baked-flat toy rig) ----------
+  const hemi = new THREE.HemisphereLight(0xfff7e6, 0xbfd4ff, 0.85);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
+  scene.add(new THREE.AmbientLight(0x9fb8e8, 0.16)); // floor so nothing goes black
+
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.25);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(HIGH_END ? 2048 : 1024, HIGH_END ? 2048 : 1024);
   sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 60;
-  sun.shadow.camera.left = -22;
-  sun.shadow.camera.right = 22;
-  sun.shadow.camera.top = 22;
-  sun.shadow.camera.bottom = -22;
-  sun.shadow.bias = -0.0005;
+  sun.shadow.camera.far = 55;
+  sun.shadow.camera.left = -16;
+  sun.shadow.camera.right = 16;
+  sun.shadow.camera.top = 16;
+  sun.shadow.camera.bottom = -16;
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.02; // hides shadow acne on the rounded bevels
+  sun.shadow.radius = 4;
   scene.add(sun);
   scene.add(sun.target);
+
+  // soft sky-blue fill from the opposite side (no shadow) lifts the dark faces
+  const fill = new THREE.DirectionalLight(0xbbd4ff, 0.35);
+  scene.add(fill);
 
   // ---------- world ----------
   const world = buildWorld();
   scene.add(world.group);
 
+  // ---------- decorative props ----------
+  const props = createProps(scene, world, LOW ? 0.4 : 1);
+
   // ---------- local player ----------
   const player = createPlayer(world.spawn);
+  if (import.meta.env.DEV) window.__bbPlayer = player; // dev-only debug hook
   const myColor = MULTIPLAYER_AVAILABLE && choice.mode === "multi" ? null : 0x4cc9f0;
   const avatar = createAvatar(myColor ?? 0x4cc9f0);
   scene.add(avatar.root);
@@ -75,6 +96,9 @@ function startGame(choice) {
   camera.snap(player.pos);
   const controls = createControls();
   setupFullscreen("btn-fs");
+
+  // ---------- post-processing (needs the camera) ----------
+  const postfx = createPostFX(renderer, scene, camera.cam, { highEnd: HIGH_END, low: LOW });
 
   if (isTouchDevice()) document.getElementById("touch-controls").classList.remove("hidden");
 
@@ -191,6 +215,7 @@ function startGame(choice) {
       sfx.gate();
       world.openGate(cp.index);
       fades.push({ mesh: world.gates[cp.index].mesh, t: 0 });
+      props.spawnSparkle({ x: cp.pos.x, y: cp.baseY, z: cp.pos.z });
       level += 1;
       hud.showFlash("Gate open!", 900);
     } else {
@@ -216,7 +241,7 @@ function startGame(choice) {
     for (const g of world.gates) {
       g.open = false;
       g.mesh.visible = true;
-      g.mesh.material.opacity = 0.78;
+      g.mesh.material.opacity = 0.6;
     }
     camera.snap(player.pos);
     state = "play";
@@ -229,9 +254,11 @@ function startGame(choice) {
 
   // ---------- main loop ----------
   let last = performance.now();
+  let elapsed = 0;
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
+    elapsed += dt;
 
     if (state === "play") {
       const inRaw = controls.getInput();
@@ -261,6 +288,7 @@ function startGame(choice) {
         state = "win";
         controls.setEnabled(false);
         sfx.win();
+        props.spawnConfetti(world.goal.pos);
         hud.showWin();
       }
 
@@ -276,27 +304,43 @@ function startGame(choice) {
     // remote players
     remote.update(dt, camera.cam);
 
-    // camera + sun follow the player
+    // camera + sun + fill follow the player so shadows + light stay crisp
     camera.follow(player.pos, dt);
     sun.position.set(player.pos.x + 12, player.pos.y + 28, player.pos.z + 8);
     sun.target.position.set(player.pos.x, player.pos.y, player.pos.z);
+    fill.position.set(player.pos.x - 10, player.pos.y + 10, player.pos.z - 6);
 
-    // spin the goal flag + checkpoint rings a touch
-    world.goal.flag.rotation.y += dt * 1.5;
-    for (const cp of world.checkpoints) if (cp.ring) cp.ring.rotation.z += dt * (cp.cleared ? 0.4 : 1.6);
+    // goal flag spin + ripple, checkpoint ring spin + pulse
+    world.goal.flag.rotation.y += dt * 1.2;
+    rippleFlag(world.goal, elapsed);
+    for (const cp of world.checkpoints) {
+      if (!cp.ring) continue;
+      cp.ring.rotation.z += dt * (cp.cleared ? 0.4 : 1.6);
+      if (cp.cleared) {
+        cp.ring.material.color.set(0xbfe9d2);
+        cp.halo.visible = false;
+      } else {
+        const pulse = 1 + Math.sin(elapsed * 3 + cp.index) * 0.06;
+        cp.ring.scale.setScalar(pulse);
+        cp.halo.scale.setScalar(pulse * 1.05);
+      }
+    }
+
+    // decorative props (clouds, coins, balloons, bursts)
+    props.update(dt, elapsed);
 
     // gate fade tweens
     for (let i = fades.length - 1; i >= 0; i--) {
       const f = fades[i];
       f.t += dt;
-      f.mesh.material.opacity = Math.max(0, 0.78 * (1 - f.t / 0.6));
+      f.mesh.material.opacity = Math.max(0, 0.6 * (1 - f.t / 0.6));
       if (f.t >= 0.6) {
         f.mesh.visible = false;
         fades.splice(i, 1);
       }
     }
 
-    renderer.render(scene, camera.cam);
+    postfx.render();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -306,6 +350,7 @@ function startGame(choice) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.cam.aspect = window.innerWidth / window.innerHeight;
     camera.cam.updateProjectionMatrix();
+    postfx.setSize(window.innerWidth, window.innerHeight);
   });
 
   // tidy up voice/net if the tab closes
@@ -315,20 +360,37 @@ function startGame(choice) {
   });
 }
 
-// vertical gradient skydome
+// ripple the goal flag's plane vertices so it looks like it is waving
+function rippleFlag(goal, t) {
+  const pos = goal.flagGeo.attributes.position;
+  const base = goal.flagBase;
+  for (let i = 0; i < pos.count; i++) {
+    const bx = base[i * 3];
+    const by = base[i * 3 + 1];
+    // anchor the pole edge (x near -0.475), wave grows toward the free edge
+    const k = (bx + 0.475) / 0.95;
+    pos.array[i * 3 + 2] = Math.sin(bx * 6 + t * 6) * 0.12 * k;
+  }
+  pos.needsUpdate = true;
+}
+
+// vertical gradient skydome (soft storybook sky)
 function makeSky() {
   const geo = new THREE.SphereGeometry(300, 32, 16);
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     uniforms: {
-      top: { value: new THREE.Color(0x3aa0ff) },
-      bottom: { value: new THREE.Color(0xdaf2ff) },
-      exponent: { value: 0.7 },
+      top: { value: new THREE.Color(0x6fbeff) },
+      mid: { value: new THREE.Color(0x9ad4ff) },
+      bottom: { value: new THREE.Color(0xeaf6ff) },
+      exponent: { value: 0.55 },
     },
     vertexShader: `varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-    fragmentShader: `varying vec3 vDir; uniform vec3 top; uniform vec3 bottom; uniform float exponent;
-      void main(){ float t = pow(max(vDir.y,0.0), exponent); gl_FragColor = vec4(mix(bottom, top, t), 1.0); }`,
+    fragmentShader: `varying vec3 vDir; uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; uniform float exponent;
+      void main(){ float t = pow(max(vDir.y,0.0), exponent);
+        vec3 c = t < 0.5 ? mix(bottom, mid, t*2.0) : mix(mid, top, (t-0.5)*2.0);
+        gl_FragColor = vec4(c, 1.0); }`,
   });
   return new THREE.Mesh(geo, mat);
 }

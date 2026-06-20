@@ -8,6 +8,7 @@ const SPEED = 6.5; // horizontal units/sec
 const GRAVITY = 26; // units/sec^2
 const JUMP_VELOCITY = 11; // initial up speed
 const FALL_LIMIT = -25; // y below which the player has "fallen off"
+const STEP_HEIGHT = 0.55; // small ledges this tall are auto-climbed (no jump needed)
 
 export function createPlayer(spawn = { x: 0, y: 2, z: 0 }) {
   return {
@@ -31,6 +32,17 @@ function overlaps(pos, p) {
   );
 }
 
+// Would the player fit (no overlap) if its center were at this y? Used to make
+// sure auto step-up doesn't shove the player into a platform overhead.
+function fitsAtY(player, y, platforms, ignore) {
+  const probe = { x: player.pos.x, y, z: player.pos.z };
+  for (const p of platforms) {
+    if (p === ignore) continue;
+    if (overlaps(probe, p)) return false;
+  }
+  return true;
+}
+
 // Move one axis then resolve any platform overlaps on that axis.
 // Returns whether the player landed on top (axis "y", moving down).
 function moveAxis(player, axis, amount, platforms) {
@@ -49,10 +61,23 @@ function moveAxis(player, axis, amount, platforms) {
       }
       player.vel.y = 0;
     } else {
-      const half = PLAYER_HALF[axis];
-      if (amount > 0) player.pos[axis] = p.min[axis] - half;
-      else if (amount < 0) player.pos[axis] = p.max[axis] + half;
-      player.vel[axis] = 0;
+      // Horizontal collision. If the obstacle is a SHORT ledge (its top is within
+      // STEP_HEIGHT of our feet) and we have headroom, climb onto it instead of
+      // stopping - like a Roblox character stepping over a curb. This kills the
+      // "wedged against a ledge" bug. Taller walls (and closed gates) still block.
+      const feet = player.pos.y - PLAYER_HALF.y;
+      const rise = p.max.y - feet;
+      const steppedY = p.max.y + PLAYER_HALF.y;
+      if (rise > 0.001 && rise <= STEP_HEIGHT && fitsAtY(player, steppedY, platforms, p)) {
+        player.pos.y = steppedY;
+        if (player.vel.y < 0) player.vel.y = 0;
+        landed = true;
+      } else {
+        const half = PLAYER_HALF[axis];
+        if (amount > 0) player.pos[axis] = p.min[axis] - half;
+        else if (amount < 0) player.pos[axis] = p.max[axis] + half;
+        player.vel[axis] = 0;
+      }
     }
   }
   return landed;
@@ -85,11 +110,12 @@ export function updatePlayer(player, dt, input, platforms) {
 
   player.vel.y -= GRAVITY * dt;
 
-  // resolve horizontal first, then vertical
-  moveAxis(player, "x", player.vel.x * dt, platforms);
-  moveAxis(player, "z", player.vel.z * dt, platforms);
-  const landed = moveAxis(player, "y", player.vel.y * dt, platforms);
-  player.grounded = landed;
+  // resolve horizontal first, then vertical. Any axis can "land" us (horizontal
+  // axes via an auto step-up onto a ledge), so OR the results together.
+  const landedX = moveAxis(player, "x", player.vel.x * dt, platforms);
+  const landedZ = moveAxis(player, "z", player.vel.z * dt, platforms);
+  const landedY = moveAxis(player, "y", player.vel.y * dt, platforms);
+  player.grounded = landedX || landedZ || landedY;
 
   // pick an animation state for the avatar + remote sync
   if (!player.grounded) player.anim = "jump";
