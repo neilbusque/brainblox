@@ -14,8 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/png" href="icon-192.png" />
     <link rel="apple-touch-icon" href="apple-touch-180.png" />
-    <script type="module" crossorigin src="/brainblox/assets/index-DzrAd47z.js"></script>
-    <link rel="stylesheet" crossorigin href="/brainblox/assets/index-DuS25lGG.css">
+    <script type="module" crossorigin src="/brainblox/assets/index-Cq_WypHY.js"></script>
+    <link rel="stylesheet" crossorigin href="/brainblox/assets/index-r1Oyq_J2.css">
   <link rel="manifest" href="/brainblox/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/brainblox/registerSW.js"></script></head>
   <body>
     <!-- 3D canvas lives here (added by Three.js) -->
@@ -122,18 +122,19 @@
       <!-- players in room -->
       <div id="player-list" class="player-list"></div>
 
-      <!-- touch controls (shown only on touch devices) -->
-      <div id="touch-controls" class="hidden">
-        <div id="joystick" class="joystick">
-          <div id="joystick-knob" class="joystick-knob"></div>
-        </div>
-        <button id="jump-btn" class="jump-btn">JUMP</button>
-      </div>
-
       <!-- transient flash message -->
       <div id="flash" class="flash"></div>
       <!-- power-up status chips -->
       <div id="powerups" class="powerups"></div>
+    </div>
+
+    <!-- touch controls (top-level so they show in every 3D mode, not just when
+         the HUD is visible; gated to touch devices in JS) -->
+    <div id="touch-controls" class="hidden">
+      <div id="joystick" class="joystick">
+        <div id="joystick-knob" class="joystick-knob"></div>
+      </div>
+      <button id="jump-btn" class="jump-btn">JUMP</button>
     </div>
 
     <!-- ============ QUIZ ARCADE (alternate mode) ============ -->
