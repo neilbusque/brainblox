@@ -1196,3 +1196,25 @@ body {
   box-shadow: 0 7px 0 #5b6a99, var(--shadow);
   animation: none;
 }
+
+/* ============ simple-mode HUD (Coin Rush / Maze) ============ */
+.mode-hud {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  z-index: 56;
+  display: flex;
+  gap: 10px;
+  pointer-events: none;
+}
+.mh-pill {
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 14px;
+  padding: 8px 16px;
+  font-weight: 900;
+  font-size: 20px;
+  box-shadow: var(--shadow);
+}
+.mh-pill.low { color: var(--bad); animation: starpop 0.5s ease-in-out infinite; }
+#mode-result { z-index: 60; background: rgba(27, 42, 82, 0.45); }

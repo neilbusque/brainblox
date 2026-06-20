@@ -25,6 +25,8 @@ import { startPuzzles } from "./puzzles.js";
 import { startLearn } from "./learn.js";
 import { startRoom } from "./room.js";
 import { startExplore } from "./explore.js";
+import { startCoinRush } from "./coinrush.js";
+import { startMaze } from "./maze.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 
@@ -66,6 +68,8 @@ const LAUNCHERS = {
   arcade: (goHome) => startArcade(goHome),
   puzzles: (goHome) => startPuzzles(goHome),
   learn: (goHome) => startLearn(goHome),
+  coinrush: () => startCoinRush(),
+  maze: () => startMaze(),
 };
 
 function initHub() {

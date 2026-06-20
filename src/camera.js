@@ -4,13 +4,13 @@
 
 import * as THREE from "three";
 
-export function createFollowCamera(aspect) {
+export function createFollowCamera(aspect, opts = {}) {
   const cam = new THREE.PerspectiveCamera(60, aspect, 0.1, 500);
   const yaw = 0; // fixed behind-the-player angle (no orbit, simplest for kids)
   const state = { yaw };
 
-  const DIST = 9;
-  const HEIGHT = 5.5;
+  const DIST = opts.dist ?? 9;
+  const HEIGHT = opts.height ?? 5.5;
   const tmpTarget = new THREE.Vector3();
   const tmpLook = new THREE.Vector3();
 

@@ -22,8 +22,8 @@ const ZONES = [
   { key: "arcade", name: "Quiz Arcade", emoji: "⚡", img: "arcade", color: 0xffd45e },
   { key: "puzzles", name: "Jigsaw Puzzles", emoji: "🧩", img: "toystore", color: 0x5fd69a },
   { key: "learn", name: "Learn", emoji: "📚", img: "school", color: 0x5fc6f0 },
-  { key: "coinrush", name: "Coin Rush", emoji: "🪙", img: "icecream", color: 0xffcf3a, soon: true },
-  { key: "maze", name: "Maze", emoji: "🌀", img: "library", color: 0xbfa1ff, soon: true },
+  { key: "coinrush", name: "Coin Rush", emoji: "🪙", img: "icecream", color: 0xffcf3a },
+  { key: "maze", name: "Maze", emoji: "🌀", img: "library", color: 0xbfa1ff },
 ];
 
 export function startExplore(onEnter) {
