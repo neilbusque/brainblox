@@ -216,6 +216,82 @@ function makeCategory(rng) {
 
 const PICTURE_MAKERS = [makeCount, makeNamePicture, makeTapPicture, makeCategory];
 
+// ---------- Learn zone (Khan-style): letters, numbers, shapes, colors ----------
+const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const SHAPES = [
+  { e: "🔵", name: "Circle" }, { e: "🟦", name: "Square" }, { e: "🔺", name: "Triangle" },
+  { e: "⭐", name: "Star" }, { e: "❤️", name: "Heart" }, { e: "🔷", name: "Diamond" },
+];
+const COLORS = [
+  { e: "🔴", name: "Red" }, { e: "🟠", name: "Orange" }, { e: "🟡", name: "Yellow" },
+  { e: "🟢", name: "Green" }, { e: "🔵", name: "Blue" }, { e: "🟣", name: "Purple" },
+];
+
+function fourLetters(correct, rng) {
+  const set = new Set([correct]);
+  while (set.size < 4) set.add(ALPHA[Math.floor(rng() * 26)]);
+  return shuffle([...set], rng);
+}
+
+function makeLetterQ(rng) {
+  if (rng() < 0.5) {
+    // "🍎 Apple starts with which letter?"
+    const item = pick(PICTURES, rng);
+    const letter = item.name[0].toUpperCase();
+    const choices = fourLetters(letter, rng);
+    return { topic: "Letters", prompt: `${item.name} starts with...?`, picture: item.e, choices, choiceEmoji: true, correctIndex: choices.indexOf(letter) };
+  }
+  // "Tap the letter B"
+  const letter = ALPHA[Math.floor(rng() * 26)];
+  const choices = fourLetters(letter, rng);
+  return { topic: "Letters", prompt: `Tap the letter ${letter}`, choices, choiceEmoji: true, correctIndex: choices.indexOf(letter) };
+}
+
+function makeNumberQ(level, rng) {
+  const roll = rng();
+  if (roll < 0.4) return makeCount(level, rng);
+  if (roll < 0.7) {
+    // "What comes after 6?"
+    const n = 1 + Math.floor(rng() * 18);
+    const choices = buildNumberChoices(n + 1, rng).map(String);
+    return { topic: "Numbers", prompt: `What comes after ${n}?`, choices, correctIndex: choices.indexOf(String(n + 1)) };
+  }
+  // "Tap the number 7"
+  const n = Math.floor(rng() * 20);
+  const choices = buildNumberChoices(n, rng).map(String);
+  return { topic: "Numbers", prompt: `Tap the number ${n}`, choices, choiceEmoji: true, correctIndex: choices.indexOf(String(n)) };
+}
+
+function fromTable(table, rng) {
+  if (rng() < 0.5) {
+    // "Tap the Circle!" -> emoji choices
+    const item = pick(table, rng);
+    const distract = sampleDistinct(table, 3, item, rng).map((s) => s.e);
+    const choices = shuffle([item.e, ...distract], rng);
+    return { prompt: `Tap the ${item.name.toLowerCase()}!`, choices, choiceEmoji: true, correctIndex: choices.indexOf(item.e), picture: null };
+  }
+  // "What is this? 🔺" -> word choices
+  const item = pick(table, rng);
+  const distract = sampleDistinct(table, 3, item, rng).map((s) => s.name);
+  const choices = shuffle([item.name, ...distract], rng);
+  return { prompt: "What is this?", picture: item.e, choices, correctIndex: choices.indexOf(item.name) };
+}
+function makeShapeQ(rng) {
+  return { topic: "Shapes", ...fromTable(SHAPES, rng) };
+}
+function makeColorQ(rng) {
+  return { topic: "Colors", ...fromTable(COLORS, rng) };
+}
+
+// A question for a Learn subject ("letters" | "numbers" | "shapes" | "colors").
+export function getLearnQuestion(subject, level = 0, rng = Math.random) {
+  if (subject === "letters") return makeLetterQ(rng);
+  if (subject === "numbers") return makeNumberQ(level, rng);
+  if (subject === "shapes") return makeShapeQ(rng);
+  if (subject === "colors") return makeColorQ(rng);
+  return getQuestion(level, rng);
+}
+
 // Return a question for the given difficulty level. Heavily weighted toward
 // visual picture questions (kids love them), with math and text mixed in.
 export function getQuestion(level = 0, rng = Math.random) {

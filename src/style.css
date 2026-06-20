@@ -177,10 +177,12 @@ body {
 }
 
 /* ---------- HUD ---------- */
+/* above the activity backdrops (.screen = 50, #arcade = 40) so stars/level show
+   over them, but below the quiz (60) and win (60) modals. */
 #hud {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: 55;
   pointer-events: none;
 }
 
@@ -726,4 +728,267 @@ body {
 .result-card h2 {
   font-size: 32px;
   margin: 6px 0;
+}
+
+/* ============ HUB / WORLD SELECT ============ */
+#hub {
+  background: radial-gradient(circle at 50% 18%, #8ed7ff, #6fbeff 55%, #5aa9f0);
+  flex-direction: column;
+}
+.hub-inner {
+  width: min(680px, 94vw);
+  text-align: center;
+}
+.hub-title {
+  font-size: clamp(30px, 8vw, 48px);
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 18px;
+  text-shadow: 2px 0 0 #14203f, -2px 0 0 #14203f, 0 2px 0 #14203f, 0 -2px 0 #14203f, 0 6px 0 rgba(20, 32, 63, 0.3);
+}
+.hub-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.hub-card {
+  font-family: inherit;
+  border: none;
+  border-radius: 24px;
+  padding: 22px 12px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 3px #fff, 0 7px 0 rgba(27, 42, 82, 0.18), var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.1s;
+}
+.hub-card:active {
+  transform: translateY(4px) scale(0.98);
+}
+.hc-emoji {
+  font-size: 52px;
+  animation: bob 2.4s ease-in-out infinite;
+}
+.hub-card:nth-child(2) .hc-emoji { animation-delay: 0.3s; }
+.hub-card:nth-child(3) .hc-emoji { animation-delay: 0.6s; }
+.hub-card:nth-child(4) .hc-emoji { animation-delay: 0.9s; }
+.hc-name {
+  font-size: clamp(16px, 4.5vw, 21px);
+  font-weight: 800;
+  color: var(--ink);
+}
+.hc-desc {
+  font-size: 13px;
+  font-weight: 700;
+  color: #7c8bb5;
+}
+.hub-foot {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.hub-foot .pill { pointer-events: none; }
+.hub-foot .icon-btn { pointer-events: auto; }
+
+/* ============ JIGSAW PUZZLES ============ */
+#puzzles {
+  background: radial-gradient(circle at 50% 18%, #ffe6a8, #ffd166 60%, #ffc23f);
+  flex-direction: column;
+  overflow: auto;
+}
+.puz-wrap {
+  width: min(560px, 94vw);
+  text-align: center;
+  padding: max(70px, calc(env(safe-area-inset-top) + 56px)) 0 30px;
+}
+.puz-title {
+  font-size: clamp(26px, 7vw, 40px);
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 16px;
+  text-shadow: 2px 0 0 #14203f, -2px 0 0 #14203f, 0 2px 0 #14203f, 0 -2px 0 #14203f;
+}
+.puz-pick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.puz-thumb {
+  border: none;
+  background: #fff;
+  border-radius: 18px;
+  padding: 8px 8px 6px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 rgba(27, 42, 82, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: transform 0.1s;
+}
+.puz-thumb:active { transform: scale(0.96); }
+.puz-thumb img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.puz-thumb span {
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ink);
+}
+.puz-diff {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+}
+.puz-dbtn {
+  font-family: inherit;
+  font-weight: 800;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+  cursor: pointer;
+}
+.puz-dbtn.selected { background: #fff; box-shadow: 0 0 0 3px var(--accent); }
+
+.puz-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.puz-board {
+  width: min(360px, 82vw);
+  aspect-ratio: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--n), 1fr);
+  grid-template-rows: repeat(var(--n), 1fr);
+  gap: 2px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 7px 0 rgba(27, 42, 82, 0.18);
+}
+.puz-cell {
+  border-radius: 6px;
+  background-repeat: no-repeat;
+  opacity: 0.16;
+  outline: 2px dashed rgba(27, 42, 82, 0.2);
+  cursor: pointer;
+}
+.puz-cell.filled {
+  opacity: 1;
+  outline: none;
+}
+.puz-cell.pop { animation: starpop 0.3s ease-out; }
+.puz-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  width: min(440px, 92vw);
+}
+.puz-piece {
+  width: 68px;
+  height: 68px;
+  border-radius: 10px;
+  background-repeat: no-repeat;
+  box-shadow: 0 4px 0 rgba(27, 42, 82, 0.25);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.puz-piece.selected {
+  outline: 4px solid var(--accent-2);
+  transform: scale(1.08);
+}
+.puz-piece.shake { animation: shake 0.4s; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+.puz-back {
+  margin-top: 18px;
+}
+.puz-again { margin-top: 12px; }
+.puz-feedback {
+  min-height: 26px;
+  margin-top: 14px;
+  font-weight: 900;
+  font-size: 22px;
+  color: #fff;
+}
+.puz-feedback.good { color: #fff; text-shadow: 0 2px 0 rgba(20,32,63,0.4); }
+.puz-confetti {
+  position: fixed;
+  top: -40px;
+  font-size: 30px;
+  animation: fall 1.8s linear forwards;
+  pointer-events: none;
+  z-index: 80;
+}
+@keyframes fall {
+  to { transform: translateY(110vh) rotate(360deg); opacity: 0.8; }
+}
+
+/* ============ LEARN ============ */
+#learn {
+  background: radial-gradient(circle at 50% 18%, #c9f0d8, #9fe6c0 60%, #6fd9a0);
+  flex-direction: column;
+  overflow: auto;
+}
+.learn-wrap {
+  width: min(620px, 94vw);
+  text-align: center;
+  padding: max(70px, calc(env(safe-area-inset-top) + 56px)) 0 30px;
+}
+.learn-title {
+  font-size: clamp(26px, 7vw, 40px);
+  font-weight: 900;
+  color: #fff;
+  margin: 0 0 18px;
+  text-shadow: 2px 0 0 #14203f, -2px 0 0 #14203f, 0 2px 0 #14203f, 0 -2px 0 #14203f;
+}
+.learn-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.learn-card {
+  font-family: inherit;
+  border: none;
+  border-radius: 22px;
+  padding: 22px 12px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 0 rgba(27, 42, 82, 0.16), var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: transform 0.1s;
+}
+.learn-card:active { transform: translateY(3px) scale(0.98); }
+.lc-emoji { font-size: 46px; }
+.lc-name { font-size: 20px; font-weight: 800; color: var(--ink); }
+.lc-desc { font-size: 13px; font-weight: 700; color: #7c8bb5; }
+.learn-foot {
+  margin-top: 18px;
+  font-weight: 800;
+  color: #fff;
+  font-size: 18px;
+  text-shadow: 0 2px 0 rgba(20, 32, 63, 0.3);
 }

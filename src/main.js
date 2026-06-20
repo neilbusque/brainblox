@@ -21,6 +21,8 @@ import { createPostFX } from "./postfx.js";
 import { createProgress } from "./progress.js";
 import { GATE_COUNT } from "./world.js";
 import { startArcade } from "./arcade.js";
+import { startPuzzles } from "./puzzles.js";
+import { startLearn } from "./learn.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 
@@ -29,16 +31,61 @@ const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 const HIGH_END = !isTouchDevice() && window.devicePixelRatio < 2.5 && (navigator.hardwareConcurrency || 4) > 4;
 const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
 
+let current = null; // the mounted activity screen { destroy }
+let playerName = "Player";
+
+initHub();
 boot();
 
 async function boot() {
   const choice = await showLobby();
   unlockAudio();
-  if (choice.activity === "arcade") startArcade();
-  else startGame(choice);
+  playerName = choice.name;
+  if (choice.mode === "multi") openActivity((goHome) => startGame(choice, goHome));
+  else showHub();
 }
 
-function startGame(choice) {
+// ---------- hub / world-select + screen router ----------
+const LAUNCHERS = {
+  obby: (goHome) => startGame({ mode: "solo", name: playerName }, goHome),
+  arcade: (goHome) => startArcade(goHome),
+  puzzles: (goHome) => startPuzzles(goHome),
+  learn: (goHome) => startLearn(goHome),
+};
+
+function initHub() {
+  setupFullscreen("hub-fs");
+  document.querySelectorAll(".hub-card").forEach((card) =>
+    card.addEventListener("click", () => openActivity(LAUNCHERS[card.dataset.act]))
+  );
+  // one delegated Home button works for every activity
+  document.getElementById("btn-home").addEventListener("click", () => goHome());
+}
+
+function openActivity(launcher) {
+  if (current?.destroy) current.destroy();
+  document.getElementById("hub").classList.add("hidden");
+  document.getElementById("btn-home").classList.remove("hidden");
+  current = launcher(goHome);
+}
+
+function goHome() {
+  document.getElementById("btn-home").classList.add("hidden");
+  if (current?.destroy) current.destroy();
+  current = null;
+  showHub();
+}
+
+function showHub() {
+  const hub = document.getElementById("hub");
+  hub.classList.remove("hidden");
+  document.getElementById("hud").classList.add("hidden");
+  const info = createProgress().info();
+  document.getElementById("hub-level").textContent = String(info.level);
+  document.getElementById("hub-stars").textContent = String(createProgress().getXp());
+}
+
+function startGame(choice, onHome) {
   // ---------- renderer + scene ----------
   // antialias is off because the composer's SMAA pass handles edges (avoids
   // paying for MSAA twice). NeutralToneMapping keeps the candy colors punchy.
@@ -316,7 +363,11 @@ function startGame(choice) {
     state = "play";
     controls.setEnabled(true);
   }
-  document.getElementById("btn-play-again").addEventListener("click", softReset);
+  const playAgainBtn = document.getElementById("btn-play-again");
+  playAgainBtn.addEventListener("click", softReset);
+  const winHomeBtn = document.getElementById("btn-win-home");
+  const onWinHome = () => onHome && onHome();
+  winHomeBtn.addEventListener("click", onWinHome);
 
   // arm all checkpoints initially
   for (const cp of world.checkpoints) cp.armed = true;
@@ -428,23 +479,49 @@ function startGame(choice) {
     }
 
     postfx.render();
-    requestAnimationFrame(frame);
+    if (alive) rafId = requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  let alive = true;
+  let rafId = requestAnimationFrame(frame);
 
   // ---------- resize ----------
-  window.addEventListener("resize", () => {
+  const onResize = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.cam.aspect = window.innerWidth / window.innerHeight;
     camera.cam.updateProjectionMatrix();
     postfx.setSize(window.innerWidth, window.innerHeight);
-  });
+  };
+  window.addEventListener("resize", onResize);
 
-  // tidy up voice/net if the tab closes
-  window.addEventListener("beforeunload", () => {
+  const onUnload = () => {
     if (voice) voice.stop();
     if (net) net.leave();
-  });
+  };
+  window.addEventListener("beforeunload", onUnload);
+
+  // (the Home button is wired centrally by the router; the obby just provides
+  //  onHome via the win-screen Hub button below.)
+
+  // ---------- teardown (stop the loop + free the GPU when leaving) ----------
+  function destroy() {
+    alive = false;
+    cancelAnimationFrame(rafId);
+    window.removeEventListener("resize", onResize);
+    window.removeEventListener("beforeunload", onUnload);
+    playAgainBtn.removeEventListener("click", softReset);
+    winHomeBtn.removeEventListener("click", onWinHome);
+    controls.destroy?.();
+    if (voice) voice.stop();
+    if (net) net.leave();
+    document.getElementById("hud").classList.add("hidden");
+    document.getElementById("touch-controls")?.classList.add("hidden");
+    document.getElementById("quiz")?.classList.add("hidden");
+    document.getElementById("win")?.classList.add("hidden");
+    renderer.dispose();
+    if (renderer.domElement.parentElement) renderer.domElement.parentElement.removeChild(renderer.domElement);
+  }
+
+  return { destroy };
 }
 
 // ripple the goal flag's plane vertices so it looks like it is waving

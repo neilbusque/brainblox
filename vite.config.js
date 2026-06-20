@@ -27,11 +27,24 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,svg,ico,webmanifest}"],
+        // keep the heavy puzzle illustrations OUT of precache (light install);
+        // they are cached on first view via runtime caching below.
+        globIgnores: ["**/assets/puzzles/**"],
         navigateFallback: "index.html",
-        // cache the Google Font so it still works offline after the first load
         runtimeCaching: [
           {
+            // the generated puzzle art - cache after first load, works offline after
+            urlPattern: ({ url }) => url.pathname.includes("/assets/puzzles/"),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "puzzle-art",
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // the Google Font so text still looks right offline
             urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com",
             handler: "CacheFirst",
             options: {
