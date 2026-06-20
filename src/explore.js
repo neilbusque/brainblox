@@ -116,6 +116,92 @@ export function startExplore(onEnter) {
     tree(Math.cos(a) * rr, Math.sin(a) * rr, 0.9 + (i % 3) * 0.25);
   }
 
+  // ---------- decorations: lamps, benches, flowers, fence, playground ----------
+  const poleMat = toonMat(0x6b7a99);
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe98a });
+  const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 3, 8);
+  const bulbGeo = new THREE.SphereGeometry(0.28, 10, 10);
+  function lamppost(x, z) {
+    const g = new THREE.Group();
+    const p = new THREE.Mesh(poleGeo, poleMat); p.position.y = 1.5; p.castShadow = true;
+    const b = new THREE.Mesh(bulbGeo, bulbMat); b.position.y = 3.1; markBloom(b);
+    g.add(p, b); g.position.set(x, 0, z); scene.add(g);
+  }
+  const benchMat = toonMat(0xb5763f);
+  function bench(x, z, rot) {
+    const g = new THREE.Group();
+    const seat = new THREE.Mesh(roundedGeo(2, 0.2, 0.7, 0.06, 1), benchMat); seat.position.y = 0.6; seat.castShadow = true;
+    const back = new THREE.Mesh(roundedGeo(2, 0.6, 0.15, 0.06, 1), benchMat); back.position.set(0, 0.95, -0.28);
+    g.add(seat, back); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
+  }
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.5;
+    lamppost(Math.cos(a) * 13, Math.sin(a) * 13);
+    if (i % 2 === 0) bench(Math.cos(a + 0.3) * 9.5, Math.sin(a + 0.3) * 9.5, -a);
+  }
+
+  // flowers + bushes
+  const bushGeo = new THREE.IcosahedronGeometry(0.7, 0);
+  const bushMat = toonMat(0x5cbf63, { flatShading: true });
+  const flowerColors = [0xff6b9d, 0xffd23f, 0xff8e72, 0xbfa1ff, 0xff5d5d];
+  for (let i = 0; i < 30; i++) {
+    const a = Math.random() * Math.PI * 2, r = 12 + Math.random() * 16;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.random() < 0.5) {
+      const bush = new THREE.Mesh(bushGeo, bushMat); bush.position.set(x, 0.5, z); bush.scale.setScalar(0.7 + Math.random()); bush.castShadow = true; scene.add(bush);
+    } else {
+      const fg = new THREE.Group();
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 5), toonMat(0x4fa85c)); stem.position.y = 0.25;
+      const bloom = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 8), toonMat(flowerColors[i % flowerColors.length])); bloom.position.y = 0.55;
+      fg.add(stem, bloom); fg.position.set(x, 0, z); scene.add(fg);
+    }
+  }
+
+  // white picket fence around the edge
+  const fenceMat = toonMat(0xfdfdf5);
+  const postGeo = new THREE.BoxGeometry(0.2, 1.1, 0.2);
+  const railGeo = new THREE.BoxGeometry(2.6, 0.16, 0.1);
+  for (let i = 0; i < 44; i++) {
+    const a = (i / 44) * Math.PI * 2;
+    const x = Math.cos(a) * (R + 1), z = Math.sin(a) * (R + 1);
+    const post = new THREE.Mesh(postGeo, fenceMat); post.position.set(x, 0.55, z); post.lookAt(0, 0.55, 0); scene.add(post);
+    if (i % 1 === 0) { const rail = new THREE.Mesh(railGeo, fenceMat); rail.position.set(x, 0.7, z); rail.lookAt(0, 0.7, 0); scene.add(rail); }
+  }
+
+  // playground (slide + swing) near the pool
+  const pg = new THREE.Group(); pg.position.set(-16, 0, 16);
+  const slideMat = toonMat(0xff8e72), frameMat = toonMat(0x5fc6f0);
+  const tower = new THREE.Mesh(roundedGeo(1.6, 2.4, 1.6, 0.2, 1), frameMat); tower.position.y = 1.2; tower.castShadow = true; pg.add(tower);
+  const slide = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 4), slideMat); slide.position.set(0, 1.4, 1.8); slide.rotation.x = 0.5; pg.add(slide);
+  const swingFrame = new THREE.Group(); swingFrame.position.set(4, 0, 0);
+  const barL = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.6, 6), frameMat); barL.position.set(-1, 1.3, 0); barL.rotation.z = 0.3;
+  const barR = barL.clone(); barR.position.x = 1; barR.rotation.z = -0.3;
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.2, 6), frameMat); top.position.y = 2.5; top.rotation.z = Math.PI / 2;
+  swingFrame.add(barL, barR, top); pg.add(swingFrame);
+  scene.add(pg);
+  colliders.push(aabb(-16, 1.2, 16, 1.8, 2.4, 1.8));
+
+  // ambient floating stars (decoration)
+  const starGeo = new THREE.IcosahedronGeometry(0.4, 0);
+  const starMat = new THREE.MeshBasicMaterial({ color: 0xffd23f });
+  const stars = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2, r = 7;
+    const s = new THREE.Mesh(starGeo, starMat); s.position.set(Math.cos(a) * r, 4 + (i % 2), Math.sin(a) * r); markBloom(s); s.userData.ph = i; scene.add(s); stars.push(s);
+  }
+
+  // ---------- wandering NPC characters ----------
+  const npcs = [];
+  ["puppy", "kitten", "bunny", "duck", "robot", "dino"].forEach((name, i) => {
+    loadCutout(`${BASE}assets/npc/${name}.png`, (tex) => {
+      const spr = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide }));
+      const a = (i / 6) * Math.PI * 2;
+      spr.position.set(Math.cos(a) * 8, 1, Math.sin(a) * 8);
+      scene.add(spr);
+      npcs.push({ spr, tx: spr.position.x, tz: spr.position.z, ph: i, speed: 1.2 + Math.random() });
+    });
+  });
+
   // ---------- building "standees" = portals ----------
   const portals = [];
   const ringR = 18;
@@ -242,6 +328,17 @@ export function startExplore(onEnter) {
     water.rotation.y += dt;
     for (const p of portals) { p.ring.rotation.z += dt * 1.5; p.ring.scale.setScalar(1 + Math.sin(elapsed * 3) * 0.06); p.sign.quaternion.copy(camera.cam.quaternion); }
     for (const c of clouds) { c.position.x += dt * 0.4; if (c.position.x > 34) c.position.x = -34; }
+    for (const s of stars) { s.rotation.y += dt * 1.5; s.position.y = 4 + (s.userData.ph % 2) + Math.sin(elapsed * 1.5 + s.userData.ph) * 0.4; }
+
+    // NPCs wander toward a target, then pick a new one; always face the camera
+    for (const n of npcs) {
+      const dx = n.tx - n.spr.position.x, dz = n.tz - n.spr.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 0.6) { const a = Math.random() * Math.PI * 2, r = 5 + Math.random() * 14; n.tx = Math.cos(a) * r; n.tz = Math.sin(a) * r; }
+      else { n.spr.position.x += (dx / dist) * n.speed * dt; n.spr.position.z += (dz / dist) * n.speed * dt; }
+      n.spr.position.y = 1 + Math.abs(Math.sin(elapsed * 6 + n.ph)) * 0.12; // little hop
+      const q = camera.cam.quaternion.clone(); n.spr.quaternion.copy(q);
+    }
 
     postfx.render();
     if (alive) rafId = requestAnimationFrame(frame);
