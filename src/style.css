@@ -1238,3 +1238,28 @@ body {
 .explore-bar .btn { padding: 8px 14px; font-size: 15px; box-shadow: 0 4px 0 rgba(29,43,83,.15); }
 .explore-bar .ex-tag { font-weight: 800; font-size: 14px; color: #5b6a99; padding-right: 6px; }
 @media (max-width: 480px) { .explore-bar .ex-tag { display: none; } }
+
+/* ============ CLOSET (avatar customization + shop) ============ */
+#closet { background: radial-gradient(circle at 50% 18%, #ffd6ee, #ffaed8 60%, #ff94bc); }
+.closet-wrap { width: min(460px, 94vw); text-align: center; padding: max(60px, calc(env(safe-area-inset-top) + 46px)) 0 24px; }
+.closet-title { font-size: clamp(26px, 7vw, 40px); font-weight: 900; color: #fff; margin: 0 0 6px; text-shadow: 2px 0 0 #14203f, -2px 0 0 #14203f, 0 2px 0 #14203f, 0 -2px 0 #14203f; }
+.closet-coins { font-weight: 900; font-size: 22px; color: #fff; text-shadow: 0 2px 0 rgba(20,32,63,.35); margin-bottom: 10px; }
+.closet-preview { display: flex; justify-content: center; margin-bottom: 14px; }
+.cp-char { width: 120px; height: 120px; border-radius: 28px; box-shadow: inset 0 -8px 0 rgba(0,0,0,.12), 0 7px 0 rgba(27,42,82,.18); position: relative; display: grid; place-items: center; }
+.cp-hat { position: absolute; top: -28px; font-size: 44px; }
+.cp-face { font-size: 30px; font-weight: 900; color: #1b2a52; }
+.closet-section { text-align: left; font-weight: 800; color: #fff; margin: 8px 4px 8px; text-shadow: 0 1px 0 rgba(20,32,63,.3); }
+.closet-colors { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.cc-swatch { width: 40px; height: 40px; border-radius: 50%; border: 4px solid #fff; cursor: pointer; box-shadow: 0 3px 0 rgba(27,42,82,.2); }
+.cc-swatch.sel { outline: 4px solid #1b2a52; }
+.closet-hats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px; }
+.ch-tile { font-family: inherit; border: none; background: #fff; border-radius: 16px; padding: 10px 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: 0 5px 0 rgba(27,42,82,.15); }
+.ch-emoji { font-size: 30px; }
+.ch-name { font-size: 12px; font-weight: 800; color: var(--ink); }
+.ch-tag { font-size: 11px; font-weight: 800; color: #7c8bb5; }
+.ch-tile.sel { outline: 3px solid var(--accent-2); }
+.ch-tile.locked .ch-emoji { filter: grayscale(0.6); opacity: 0.7; }
+.ch-tile.locked .ch-tag { color: var(--accent); }
+.closet-msg { min-height: 22px; margin: 10px 0; font-weight: 800; color: #fff; text-shadow: 0 1px 0 rgba(20,32,63,.4); }
+#closet-done { width: 100%; margin-top: 8px; }
+@media (max-width: 380px) { .closet-hats { grid-template-columns: repeat(3, 1fr); } }

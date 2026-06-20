@@ -6,6 +6,7 @@ import { createScene3d } from "./scene3d.js";
 import { toonMat, markBloom } from "./gfx.js";
 import { sfx } from "./audio.js";
 import { createProgress } from "./progress.js";
+import * as profile from "./profile.js";
 
 const TIME = 45;
 
@@ -51,7 +52,7 @@ export function startCoinRush() {
       c.rotation.y += dt * 3;
       c.position.y = 1.1 + Math.sin((c.userData.spin += dt * 2)) * 0.15;
       if (!over && Math.hypot(rig.player.pos.x - c.position.x, rig.player.pos.z - c.position.z) < 1.3 && Math.abs(rig.player.pos.y - c.position.y) < 2) {
-        c.visible = false; collected++; sfx.coin(); paint();
+        c.visible = false; collected++; profile.addCoins(1); sfx.coin(); paint();
       }
     }
     if (over) return;

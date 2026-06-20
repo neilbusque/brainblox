@@ -15,6 +15,7 @@ import { createNet, MULTIPLAYER_AVAILABLE } from "./net.js";
 import { createVoice } from "./voice.js";
 import { createRemotePlayers } from "./remotePlayers.js";
 import { colorForId } from "./avatar.js";
+import * as profile from "./profile.js";
 
 const HIGH_END = !isTouchDevice() && window.devicePixelRatio < 2.5 && (navigator.hardwareConcurrency || 4) > 4;
 const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
@@ -28,6 +29,7 @@ const ZONES = [
   { key: "learn", name: "Learn", emoji: "📚", img: "school", color: 0x5fc6f0 },
   { key: "coinrush", name: "Coin Rush", emoji: "🪙", img: "icecream", color: 0xffcf3a },
   { key: "maze", name: "Maze", emoji: "🌀", img: "library", color: 0xbfa1ff },
+  { key: "closet", name: "My Closet", emoji: "👕", color: 0xff94bc },
 ];
 
 export function startExplore(onEnter, opts = {}) {
@@ -227,11 +229,20 @@ export function startExplore(onEnter, opts = {}) {
     group.add(base);
     colliders.push(aabb(bx, 1.5, bz, 5.5, 3, 2));
 
-    // the building art as a standee (white removed at load)
-    const standee = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, color: 0xffffff }));
-    standee.position.set(0, 3.1, 0);
-    group.add(standee);
-    loadCutout(`${BASE}assets/world/${z.img}.jpg`, (tex) => { standee.material.map = tex; standee.material.needsUpdate = true; });
+    if (z.img) {
+      // the building art as a standee (white removed at load)
+      const standee = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, color: 0xffffff }));
+      standee.position.set(0, 3.1, 0);
+      group.add(standee);
+      loadCutout(`${BASE}assets/world/${z.img}.jpg`, (tex) => { standee.material.map = tex; standee.material.needsUpdate = true; });
+    } else {
+      // no art (Closet) -> a simple wardrobe
+      const ward = new THREE.Mesh(roundedGeo(2.2, 3, 1, 0.12, 2), toonMat(z.color));
+      ward.position.y = 2.1; ward.castShadow = true;
+      const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 2.4, 0.05), toonMat(0xffffff)); doorL.position.set(0, 2.1, 0.52);
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), toonMat(0xffd23f)); knob.position.set(-0.25, 2.1, 0.52);
+      group.add(ward, doorL, knob);
+    }
 
     // floating sign with emoji + name
     const sign = makeSign(z.emoji + " " + z.name + (z.soon ? "  🔜" : ""));
@@ -251,6 +262,7 @@ export function startExplore(onEnter, opts = {}) {
 
     portals.push({ ...z, padPos, ring, sign });
   });
+  if (import.meta.env.DEV) window.__bbPortals = portals.map((p) => ({ key: p.key, x: p.padPos.x, z: p.padPos.z }));
 
   // ---------- clouds + ambient coins ----------
   const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -266,7 +278,7 @@ export function startExplore(onEnter, opts = {}) {
   const player = createPlayer({ x: 0, y: 1.5, z: -7 });
   player.facing = 0;
   if (import.meta.env.DEV) window.__bbPlayer = player;
-  const avatar = createAvatar(0x5cc6f0);
+  const avatar = createAvatar(profile.getColor(), "", profile.getHat());
   scene.add(avatar.root);
   const camera = createFollowCamera(window.innerWidth / window.innerHeight);
   camera.snap(player.pos);

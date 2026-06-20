@@ -11,6 +11,7 @@ import { createFollowCamera, intentToWorld } from "./camera.js";
 import { toonMat } from "./gfx.js";
 import { createPostFX } from "./postfx.js";
 import { sfx } from "./audio.js";
+import * as profile from "./profile.js";
 
 const HIGH_END = !isTouchDevice() && window.devicePixelRatio < 2.5 && (navigator.hardwareConcurrency || 4) > 4;
 const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
@@ -65,7 +66,7 @@ export function createScene3d(spawn, opts = {}) {
 
   const player = createPlayer(spawn);
   if (import.meta.env.DEV) window.__bbPlayer = player;
-  const avatar = createAvatar(0x5cc6f0);
+  const avatar = createAvatar(profile.getColor(), "", profile.getHat());
   scene.add(avatar.root);
   const camera = createFollowCamera(window.innerWidth / window.innerHeight, { dist: opts.camDist, height: opts.camHeight });
   camera.snap(player.pos);

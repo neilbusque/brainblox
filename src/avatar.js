@@ -25,7 +25,7 @@ function part(w, h, d, color, outline = true) {
   return mesh;
 }
 
-export function createAvatar(bodyColor = 0x5cc6f0, name = "") {
+export function createAvatar(bodyColor = 0x5cc6f0, name = "", hat = "none") {
   const root = new THREE.Group();
   const skin = 0xffd9b0;
   const pants = 0x2e3f73;
@@ -44,6 +44,10 @@ export function createAvatar(bodyColor = 0x5cc6f0, name = "") {
   const head = part(0.66, 0.66, 0.66, skin);
   head.position.y = 0.82;
   root.add(head);
+
+  // hat sits on top of the head
+  const hatGroup = buildHat(hat);
+  if (hatGroup) { hatGroup.position.y = 1.18; root.add(hatGroup); }
 
   // face (unlit so it stays crisp) on the +z side of the head
   const faceInk = new THREE.MeshBasicMaterial({ color: ink });
@@ -151,6 +155,64 @@ function lighten(hex, amt) {
   const c = new THREE.Color(hex);
   c.lerp(new THREE.Color(0xffffff), amt);
   return c.getHex();
+}
+
+// Build a hat from cheap primitives. Returns a THREE.Group (or null for "none").
+export function buildHat(key) {
+  const g = new THREE.Group();
+  const m = (c, o) => toonMat(c, o);
+  if (key === "cap") {
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), m(0xff5d5d));
+    const brim = new THREE.Mesh(roundedGeo(0.5, 0.08, 0.4, 0.04, 1), m(0xff5d5d));
+    brim.position.set(0, 0.02, 0.34);
+    g.add(dome, brim);
+  } else if (key === "crown") {
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.18, 14, 1, true), m(0xffd23f));
+    band.position.y = 0.1;
+    g.add(band);
+    for (let i = 0; i < 6; i++) {
+      const p = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.22, 6), m(0xffd23f));
+      const a = (i / 6) * Math.PI * 2;
+      p.position.set(Math.cos(a) * 0.3, 0.28, Math.sin(a) * 0.3);
+      g.add(p);
+    }
+  } else if (key === "party") {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.7, 14), m(0xff6b9d));
+    cone.position.y = 0.34;
+    const pom = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), m(0xfff3b0));
+    pom.position.y = 0.72;
+    g.add(cone, pom);
+  } else if (key === "beanie") {
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), m(0x5fd69a));
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.07, 8, 18), m(0x38c088));
+    band.rotation.x = Math.PI / 2;
+    const pom = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8), m(0xffffff));
+    pom.position.y = 0.36;
+    g.add(dome, band, pom);
+  } else if (key === "propeller") {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), m(0x5fc6f0));
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 6), m(0x6b7a99));
+    stick.position.y = 0.32;
+    const blades = new THREE.Group();
+    blades.position.y = 0.44;
+    for (let i = 0; i < 3; i++) {
+      const b = new THREE.Mesh(roundedGeo(0.32, 0.04, 0.1, 0.02, 1), m([0xff8e72, 0x5fd69a, 0xffd23f][i]));
+      b.position.x = 0.16;
+      const w = new THREE.Group(); w.rotation.y = (i / 3) * Math.PI * 2; w.add(b); blades.add(w);
+    }
+    g.userData.spin = blades;
+    g.add(cap, stick, blades);
+  } else if (key === "wizard") {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.85, 16), m(0x7a5bdc));
+    cone.position.y = 0.42;
+    const brim = new THREE.Mesh(new THREE.CircleGeometry(0.5, 18), m(0x5b3fb0));
+    brim.rotation.x = -Math.PI / 2; brim.position.y = 0.02;
+    g.add(brim, cone);
+  } else {
+    return null;
+  }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
 }
 
 function makeNameTag(name) {

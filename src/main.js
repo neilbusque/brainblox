@@ -27,6 +27,8 @@ import { startRoom } from "./room.js";
 import { startExplore } from "./explore.js";
 import { startCoinRush } from "./coinrush.js";
 import { startMaze } from "./maze.js";
+import { startCloset } from "./closet.js";
+import * as profile from "./profile.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 
@@ -75,6 +77,7 @@ const LAUNCHERS = {
   learn: (goHome) => startLearn(goHome),
   coinrush: () => startCoinRush(),
   maze: () => startMaze(),
+  closet: (goHome) => startCloset(goHome),
 };
 
 function initHub() {
@@ -160,8 +163,7 @@ function startGame(choice, onHome) {
   // ---------- local player ----------
   const player = createPlayer(world.spawn);
   if (import.meta.env.DEV) window.__bbPlayer = player; // dev-only debug hook
-  const myColor = MULTIPLAYER_AVAILABLE && choice.mode === "multi" ? null : 0x4cc9f0;
-  const avatar = createAvatar(myColor ?? 0x4cc9f0);
+  const avatar = createAvatar(profile.getColor(), "", profile.getHat());
   scene.add(avatar.root);
 
   // ---------- camera + controls ----------
@@ -420,6 +422,7 @@ function startGame(choice, onHome) {
         hud.setCoins(coinTotal);
         sfx.coin();
         awardXp(got * 2);
+        profile.addCoins(got); // into the persistent wallet (spend in the Closet)
       }
 
       // collect a power-up
