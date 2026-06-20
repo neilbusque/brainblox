@@ -41,12 +41,13 @@ export function createFollowCamera(aspect) {
 }
 
 // Convert camera-relative intent (fwd/right) into a world-space direction,
-// given the camera yaw. fwd = away from camera, right = camera's right.
+// given the camera yaw. fwd = away from camera, right = the player's right as
+// seen on screen. With the camera looking toward +z, screen-right is -x, so the
+// right axis is negated (this fixes the "press left, moves right" bug).
 export function intentToWorld(fwd, right, yaw) {
   const sin = Math.sin(yaw);
   const cos = Math.cos(yaw);
-  // forward vector (into screen) = (sin, cos); right vector = (cos, -sin)
-  const x = fwd * sin + right * cos;
-  const z = fwd * cos - right * sin;
+  const x = fwd * sin - right * cos;
+  const z = fwd * cos + right * sin;
   return { x, z };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BANK, getQuestion } from "../src/questions.js";
+import { BANK, PICTURES, getQuestion } from "../src/questions.js";
 
 // A small seedable PRNG so tests are deterministic across runs.
 function mulberry32(seed) {
@@ -36,6 +36,41 @@ describe("getQuestion", () => {
         expect(new Set(q.choices).size).toBe(q.choices.length); // distinct choices
       }
     }
+  });
+
+  it("counting questions: the correct answer equals the number of pictures shown", () => {
+    let counted = 0;
+    for (let seed = 1; seed <= 2000 && counted < 200; seed++) {
+      const q = getQuestion(2, mulberry32(seed));
+      if (q.topic !== "Counting") continue;
+      counted++;
+      expect(q.picCount).toBeGreaterThanOrEqual(2);
+      expect(Number(q.choices[q.correctIndex])).toBe(q.picCount);
+      expect(q.picture).toBeTruthy();
+    }
+    expect(counted).toBeGreaterThan(0);
+  });
+
+  it("picture questions are well-formed (emoji tiles or a picture, valid answer)", () => {
+    const names = new Set(PICTURES.map((p) => p.name));
+    let pics = 0;
+    for (let seed = 1; seed <= 3000 && pics < 300; seed++) {
+      const q = getQuestion(3, mulberry32(seed));
+      if (q.topic !== "Pictures") continue;
+      pics++;
+      expect(q.correctIndex).toBeGreaterThanOrEqual(0);
+      expect(q.correctIndex).toBeLessThan(q.choices.length);
+      expect(new Set(q.choices).size).toBe(q.choices.length);
+      if (q.choiceEmoji) {
+        // tap-the-picture / category: answer is an emoji
+        expect(q.choices.every((c) => typeof c === "string" && c.length > 0)).toBe(true);
+      } else {
+        // name-the-picture: answer is a real word from the table, shown a picture
+        expect(q.picture).toBeTruthy();
+        expect(names.has(q.choices[q.correctIndex])).toBe(true);
+      }
+    }
+    expect(pics).toBeGreaterThan(0);
   });
 
   it("generated math answers are arithmetically correct", () => {

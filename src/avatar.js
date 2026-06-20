@@ -107,6 +107,7 @@ export function createAvatar(bodyColor = 0x5cc6f0, name = "") {
   let t = 0;
   function update(anim, dt, camera) {
     t += dt;
+    if (anim !== "cheer") root.rotation.z = 0; // clear cheer tilt
     if (anim === "run") {
       const s = Math.sin(t * 12) * 0.95;
       legL.rotation.x = s;
@@ -121,7 +122,17 @@ export function createAvatar(bodyColor = 0x5cc6f0, name = "") {
       armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, -2.3, e);
       armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -2.3, e);
       torso.position.y = 0;
+    } else if (anim === "cheer") {
+      // both arms thrown up + happy bounce
+      armL.rotation.x = -2.7;
+      armR.rotation.x = -2.7;
+      const b = Math.abs(Math.sin(t * 10));
+      legL.rotation.x = 0;
+      legR.rotation.x = 0;
+      torso.position.y = b * 0.12;
+      root.rotation.z = Math.sin(t * 16) * 0.05;
     } else {
+      root.rotation.z = 0;
       const e = 0.15;
       for (const l of [legL, legR, armL, armR]) l.rotation.x = THREE.MathUtils.lerp(l.rotation.x, 0, e);
       torso.position.y = Math.sin(t * 2) * 0.03;

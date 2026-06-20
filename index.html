@@ -4,34 +4,44 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#5fc6f0" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BrainBlox" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <title>BrainBlox - Jump and Learn!</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234cc9f0'/%3E%3Ctext x='50' y='72' font-size='60' text-anchor='middle'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%235fc6f0'/%3E%3Ctext x='50' y='72' font-size='60' text-anchor='middle'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%235fc6f0'/%3E%3Ctext x='50' y='74' font-size='62' text-anchor='middle'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
     <!-- 3D canvas lives here (added by Three.js) -->
     <div id="game-root"></div>
-
-    <!-- free CSS vignette for depth -->
     <div class="vignette"></div>
 
     <!-- ============ LOBBY / START SCREEN ============ -->
     <div id="lobby" class="screen">
       <div class="lobby-card">
+        <div class="lobby-emoji">🧩</div>
         <h1 class="logo">BrainBlox</h1>
         <p class="tagline">Jump, play, and learn with friends!</p>
+
+        <div class="modes">
+          <button id="mode-obby" class="mode-btn selected"><span class="mode-emoji">🏃</span>Obstacle Course</button>
+          <button id="mode-arcade" class="mode-btn"><span class="mode-emoji">⚡</span>Quiz Arcade</button>
+        </div>
 
         <label class="field-label" for="name-input">Your name</label>
         <input id="name-input" class="text-input" type="text" maxlength="12" placeholder="Type your name" autocomplete="off" />
 
         <div class="lobby-buttons">
-          <button id="btn-solo" class="btn btn-big">Play Alone</button>
-          <button id="btn-create" class="btn btn-big btn-accent">Create a Room</button>
+          <button id="btn-solo" class="btn btn-big">🎮 Play Alone</button>
+          <button id="btn-create" class="btn btn-big btn-accent">👫 Create a Room</button>
         </div>
 
-        <div class="join-row">
+        <div class="join-row" id="join-row">
           <input id="code-input" class="text-input code" type="text" maxlength="7" placeholder="ROOM CODE" autocomplete="off" />
           <button id="btn-join" class="btn">Join</button>
         </div>
@@ -44,12 +54,19 @@
     <div id="hud" class="hidden">
       <!-- top bar -->
       <div class="hud-top">
-        <div class="hud-stars">⭐ <span id="star-count">0</span></div>
-        <div id="room-badge" class="room-badge hidden">
-          Room <span id="room-code-label"></span>
-          <button id="btn-copy" class="mini-btn" title="Copy invite link">Copy link</button>
+        <div class="hud-left">
+          <div class="pill stars">⭐ <span id="star-count">0</span></div>
+          <div class="pill coins">🪙 <span id="coin-count">0</span></div>
+          <div class="pill level">
+            <span class="lvl-badge">Lv <span id="level-num">1</span></span>
+            <span class="xp-bar"><span id="xp-fill" class="xp-fill"></span></span>
+          </div>
         </div>
-        <div class="hud-top-right">
+        <div class="hud-right">
+          <div id="room-badge" class="room-badge hidden">
+            Room <span id="room-code-label"></span>
+            <button id="btn-copy" class="mini-btn" title="Copy invite link">Copy link</button>
+          </div>
           <button id="btn-mute" class="icon-btn hidden" title="Mic">🎤</button>
           <button id="btn-fs" class="icon-btn" title="Fullscreen">⛶</button>
         </div>
@@ -66,14 +83,36 @@
         <button id="jump-btn" class="jump-btn">JUMP</button>
       </div>
 
-      <!-- transient flash message (checkpoint reached, oops, etc) -->
+      <!-- transient flash message -->
       <div id="flash" class="flash"></div>
+      <!-- power-up status chips -->
+      <div id="powerups" class="powerups"></div>
+    </div>
+
+    <!-- ============ QUIZ ARCADE (alternate mode) ============ -->
+    <div id="arcade" class="hidden">
+      <div class="arcade-head">
+        <div class="arcade-title">⚡ Quiz Arcade</div>
+        <div class="arcade-count">Question <span id="arcade-q">1</span> of <span id="arcade-total">10</span></div>
+      </div>
+      <div id="arcade-result" class="result-card hidden">
+        <div class="win-emoji" id="arcade-result-emoji">🎉</div>
+        <h2 id="arcade-result-title">Great job!</h2>
+        <p class="win-stars" id="arcade-result-sub"></p>
+        <div class="lobby-buttons">
+          <button id="btn-arcade-again" class="btn btn-big btn-accent">Play Again</button>
+          <button id="btn-arcade-menu" class="btn btn-big">Back to Menu</button>
+        </div>
+      </div>
     </div>
 
     <!-- ============ QUIZ MODAL ============ -->
     <div id="quiz" class="screen hidden">
       <div class="quiz-card">
+        <div class="quiz-mascot" id="quiz-mascot">🦊</div>
+        <div class="quiz-progress"><span id="quiz-progress-fill" class="quiz-progress-fill"></span></div>
         <div class="quiz-topic" id="quiz-topic">Math</div>
+        <div class="quiz-picture" id="quiz-picture"></div>
         <div class="quiz-prompt" id="quiz-prompt"></div>
         <div class="quiz-choices" id="quiz-choices"></div>
         <div class="quiz-feedback" id="quiz-feedback"></div>
@@ -85,8 +124,19 @@
       <div class="win-card">
         <div class="win-emoji">🏆</div>
         <h2>You did it!</h2>
-        <p class="win-stars">You earned <span id="win-star-count">0</span> stars ⭐</p>
+        <p class="win-stars">You earned <span id="win-star-count">0</span> ⭐ and <span id="win-coin-count">0</span> 🪙</p>
+        <p class="win-level">You reached <b>Level <span id="win-level-num">1</span></b>!</p>
         <button id="btn-play-again" class="btn btn-big btn-accent">Play Again</button>
+      </div>
+    </div>
+
+    <!-- ============ FULLSCREEN TIP (iOS, no FS API) ============ -->
+    <div id="fs-tip" class="screen hidden">
+      <div class="tip-card">
+        <div class="win-emoji">📱</div>
+        <h2>Go Full Screen</h2>
+        <p>Tap the <b>Share</b> button below, then choose <b>Add to Home Screen</b>. Open BrainBlox from your home screen to play full screen!</p>
+        <button id="btn-tip-close" class="btn btn-big btn-accent">Got it!</button>
       </div>
     </div>
 

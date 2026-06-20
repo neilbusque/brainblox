@@ -18,6 +18,10 @@ export function createPlayer(spawn = { x: 0, y: 2, z: 0 }) {
     facing: 0, // radians, for turning the avatar toward movement
     anim: "idle", // idle | run | jump (for remote sync + squash)
     spawn: { ...spawn },
+    // power-up modifiers (single jump, normal speed by default)
+    maxJumps: 1,
+    jumpsUsed: 0,
+    speedMult: 1,
   };
 }
 
@@ -97,14 +101,19 @@ export function updatePlayer(player, dt, input, platforms) {
   const nx = len > 1 ? mx / len : mx;
   const nz = len > 1 ? mz / len : mz;
 
-  player.vel.x = nx * SPEED;
-  player.vel.z = nz * SPEED;
+  const speed = SPEED * (player.speedMult || 1);
+  player.vel.x = nx * speed;
+  player.vel.z = nz * speed;
 
   if (len > 0.05) player.facing = Math.atan2(nx, nz);
 
-  // jump only when standing on something
-  if (input.jump && player.grounded) {
+  // jumping: standing on ground resets the jump count; a jump is allowed while we
+  // still have jumps left (maxJumps > 1 means a double jump from a power-up).
+  if (player.grounded) player.jumpsUsed = 0;
+  const maxJumps = player.maxJumps || 1;
+  if (input.jump && (player.jumpsUsed || 0) < maxJumps) {
     player.vel.y = JUMP_VELOCITY;
+    player.jumpsUsed = (player.jumpsUsed || 0) + 1;
     player.grounded = false;
   }
 

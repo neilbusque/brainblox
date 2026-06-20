@@ -18,6 +18,9 @@ import { createVoice } from "./voice.js";
 import { colorForId } from "./avatar.js";
 import { createProps } from "./props.js";
 import { createPostFX } from "./postfx.js";
+import { createProgress } from "./progress.js";
+import { GATE_COUNT } from "./world.js";
+import { startArcade } from "./arcade.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 
@@ -31,7 +34,8 @@ boot();
 async function boot() {
   const choice = await showLobby();
   unlockAudio();
-  startGame(choice);
+  if (choice.activity === "arcade") startArcade();
+  else startGame(choice);
 }
 
 function startGame(choice) {
@@ -198,6 +202,51 @@ function startGame(choice) {
   let respawnPoint = { ...world.spawn };
   const fades = []; // gate fade tweens: { mesh, t }
 
+  // progression + run counters
+  const progress = createProgress();
+  hud.setLevel(progress.info());
+  let coinTotal = 0;
+  let streak = 0;
+  let cheerUntil = 0;
+  const activePowerups = []; // { type, icon, label, until }
+
+  // award XP, refresh the HUD bar, and celebrate a level-up
+  function awardXp(amount) {
+    const res = progress.addXp(amount);
+    hud.setLevel(res.info);
+    if (res.leveledUp) {
+      hud.popLevel();
+      hud.showFlash(`Level ${res.level}! 🎉`, 1100);
+      sfx.levelup();
+      props.spawnConfetti({ x: player.pos.x, y: player.pos.y + 3, z: player.pos.z });
+    }
+  }
+
+  // ---------- power-ups ----------
+  const PWR_DURATION = 18; // seconds
+  function applyPowerup(pu) {
+    sfx.powerup();
+    const existing = activePowerups.find((p) => p.type === pu.type);
+    if (existing) existing.until = elapsed + PWR_DURATION;
+    else activePowerups.push({ ...pu, until: elapsed + PWR_DURATION });
+    if (pu.type === "doublejump") player.maxJumps = 2;
+    if (pu.type === "speed") player.speedMult = 1.6;
+    hud.showFlash(`${pu.icon} ${pu.label}!`, 1100);
+    hud.setPowerups(activePowerups.map((p) => ({ icon: p.icon, label: p.label })));
+  }
+  function updatePowerups() {
+    let changed = false;
+    for (let i = activePowerups.length - 1; i >= 0; i--) {
+      if (elapsed > activePowerups[i].until) {
+        const exp = activePowerups.splice(i, 1)[0];
+        if (exp.type === "doublejump") player.maxJumps = 1;
+        if (exp.type === "speed") player.speedMult = 1;
+        changed = true;
+      }
+    }
+    if (changed) hud.setPowerups(activePowerups.map((p) => ({ icon: p.icon, label: p.label })));
+  }
+
   async function triggerQuiz(cp) {
     cp.armed = false;
     state = "quiz";
@@ -206,7 +255,7 @@ function startGame(choice) {
     sfx.checkpoint();
 
     const q = getQuestion(level);
-    const correct = await quiz.ask(q);
+    const correct = await quiz.ask(q, { progress: cp.index / GATE_COUNT });
 
     if (correct) {
       cp.cleared = true;
@@ -216,10 +265,22 @@ function startGame(choice) {
       world.openGate(cp.index);
       fades.push({ mesh: world.gates[cp.index].mesh, t: 0 });
       props.spawnSparkle({ x: cp.pos.x, y: cp.baseY, z: cp.pos.z });
+      props.spawnConfetti({ x: cp.pos.x, y: cp.pos.y + 2, z: cp.pos.z });
       level += 1;
-      hud.showFlash("Gate open!", 900);
+      streak += 1;
+      cheerUntil = elapsed + 1.4; // character cheers
+      awardXp(20);
+      // streak bonus every 3 correct in a row
+      if (streak > 0 && streak % 3 === 0) {
+        hud.addStar();
+        awardXp(15);
+        hud.showFlash(`${streak} in a row! Bonus ⭐`, 1200);
+      } else {
+        hud.showFlash("Gate open! 🎉", 900);
+      }
     } else {
       sfx.wrong();
+      streak = 0;
       hud.showFlash("Try again!", 1000);
       respawn(player, cp.pos); // back onto the safe pad, gate still locked
     }
@@ -230,9 +291,17 @@ function startGame(choice) {
   function softReset() {
     hud.hideWin();
     hud.setStars(0);
+    coinTotal = 0;
+    streak = 0;
+    hud.setCoins(0);
+    activePowerups.length = 0;
+    hud.setPowerups([]);
+    player.maxJumps = 1;
+    player.speedMult = 1;
     level = 0;
     respawnPoint = { ...world.spawn };
     respawn(player, world.spawn);
+    props.resetCollectibles();
     for (const cp of world.checkpoints) {
       cp.armed = true;
       cp.cleared = false;
@@ -271,6 +340,22 @@ function startGame(choice) {
         hud.showFlash("Whoops!", 700);
       }
 
+      // collect coins along the way
+      const got = props.collectCoins(player.pos);
+      if (got) {
+        coinTotal += got;
+        hud.setCoins(coinTotal);
+        sfx.coin();
+        awardXp(got * 2);
+      }
+
+      // collect a power-up
+      const pu = props.collectPowerup(player.pos);
+      if (pu) applyPowerup(pu);
+
+      // expire power-ups
+      updatePowerups();
+
       // checkpoints: trigger when armed + inside ring; re-arm after leaving
       for (const cp of world.checkpoints) {
         const d = Math.hypot(player.pos.x - cp.pos.x, player.pos.z - cp.pos.z);
@@ -288,18 +373,20 @@ function startGame(choice) {
         state = "win";
         controls.setEnabled(false);
         sfx.win();
+        awardXp(100);
         props.spawnConfetti(world.goal.pos);
-        hud.showWin();
+        hud.showWin(progress.info().level);
       }
 
       // broadcast my position
       if (net) net.sendState({ x: player.pos.x, y: player.pos.y, z: player.pos.z, ry: player.facing, anim: player.anim });
     }
 
-    // place + animate local avatar
+    // place + animate local avatar (cheer briefly after a correct answer)
     avatar.root.position.set(player.pos.x, player.pos.y + AVATAR_Y_OFFSET, player.pos.z);
     avatar.root.rotation.y = player.facing;
-    avatar.update(player.anim, dt, camera.cam);
+    const showAnim = elapsed < cheerUntil ? "cheer" : player.anim;
+    avatar.update(showAnim, dt, camera.cam);
 
     // remote players
     remote.update(dt, camera.cam);

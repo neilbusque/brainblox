@@ -61,4 +61,17 @@ export const sfx = {
     const notes = [523, 659, 784, 1047];
     notes.forEach((f, i) => tone(f, i * 0.14, 0.3, "triangle", 0.2));
   },
+  coin() {
+    tone(880, 0, 0.06, "square", 0.1);
+    tone(1320, 0.05, 0.1, "square", 0.1);
+  },
+  powerup() {
+    tone(500, 0, 0.08, "triangle", 0.14);
+    tone(700, 0.07, 0.08, "triangle", 0.14);
+    tone(1000, 0.14, 0.16, "triangle", 0.16);
+  },
+  levelup() {
+    const notes = [659, 784, 988, 1319];
+    notes.forEach((f, i) => tone(f, i * 0.1, 0.22, "triangle", 0.18));
+  },
 };
