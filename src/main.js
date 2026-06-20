@@ -7,7 +7,7 @@ import { createAvatar } from "./avatar.js";
 import { createControls, isTouchDevice } from "./controls.js";
 import { createFollowCamera, intentToWorld } from "./camera.js";
 import { setupFullscreen } from "./fullscreen.js";
-import { getQuestion } from "./questions.js";
+import { getQuestion, getCategoryQuestion } from "./questions.js";
 import { createQuiz } from "./quiz.js";
 import { createHud } from "./hud.js";
 import { sfx, unlockAudio } from "./audio.js";
@@ -23,6 +23,7 @@ import { GATE_COUNT } from "./world.js";
 import { startArcade } from "./arcade.js";
 import { startPuzzles } from "./puzzles.js";
 import { startLearn } from "./learn.js";
+import { startRoom } from "./room.js";
 
 const AVATAR_Y_OFFSET = 0.15; // lift the visual so feet rest on platform tops
 
@@ -41,8 +42,13 @@ async function boot() {
   const choice = await showLobby();
   unlockAudio();
   playerName = choice.name;
-  if (choice.mode === "multi") openActivity((goHome) => startGame(choice, goHome));
+  if (choice.mode === "multi") openActivity(() => startRoom(choice, { launchObby }));
   else showHub();
+}
+
+// launch the multiplayer obby from the room lobby (its own reconnecting world)
+function launchObby(code, name, category) {
+  openActivity((goHome) => startGame({ mode: "multi", name, code, category }, goHome));
 }
 
 // ---------- hub / world-select + screen router ----------
@@ -301,7 +307,7 @@ function startGame(choice, onHome) {
     respawnPoint = { ...cp.pos };
     sfx.checkpoint();
 
-    const q = getQuestion(level);
+    const q = choice.category ? getCategoryQuestion(choice.category, level) : getQuestion(level);
     const correct = await quiz.ask(q, { progress: cp.index / GATE_COUNT });
 
     if (correct) {

@@ -18,7 +18,7 @@ const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const MULTIPLAYER_AVAILABLE = Boolean(URL && KEY);
 
 export function createNet() {
-  const listeners = { roster: [], state: [], signal: [], join: [], leave: [] };
+  const listeners = { roster: [], state: [], signal: [], join: [], leave: [], msg: [] };
   const emit = (ev, payload) => listeners[ev].forEach((cb) => cb(payload));
 
   let client = null;
@@ -59,6 +59,11 @@ export function createNet() {
       if (payload && payload.to === me.id) emit("signal", payload);
     });
 
+    // generic room messages (lobby state, classroom questions/answers, etc.)
+    channel.on("broadcast", { event: "msg" }, ({ payload }) => {
+      if (payload) emit("msg", payload);
+    });
+
     await new Promise((resolve) => {
       channel.subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -84,6 +89,12 @@ export function createNet() {
     channel.send({ type: "broadcast", event: "signal", payload: { from: me.id, to: toId, data } });
   }
 
+  // broadcast a typed room message to everyone (lobby/classroom/quiz sync)
+  function sendMsg(type, data = {}) {
+    if (!channel) return;
+    channel.send({ type: "broadcast", event: "msg", payload: { type, from: me.id, ...data } });
+  }
+
   async function leave() {
     if (channel) {
       try {
@@ -98,8 +109,13 @@ export function createNet() {
   }
 
   function on(ev, cb) {
-    if (listeners[ev]) listeners[ev].push(cb);
+    if (!listeners[ev]) return () => {};
+    listeners[ev].push(cb);
+    return () => {
+      const i = listeners[ev].indexOf(cb);
+      if (i >= 0) listeners[ev].splice(i, 1);
+    };
   }
 
-  return { join, leave, sendState, sendSignal, on, get myId() { return me?.id; } };
+  return { join, leave, sendState, sendSignal, sendMsg, on, get myId() { return me?.id; } };
 }

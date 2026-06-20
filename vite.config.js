@@ -28,18 +28,18 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,ico,webmanifest}"],
-        // keep the heavy puzzle illustrations OUT of precache (light install);
+        // keep the heavy generated illustrations OUT of precache (light install);
         // they are cached on first view via runtime caching below.
-        globIgnores: ["**/assets/puzzles/**"],
+        globIgnores: ["**/assets/puzzles/**", "**/assets/scenes/**"],
         navigateFallback: "index.html",
         runtimeCaching: [
           {
-            // the generated puzzle art - cache after first load, works offline after
-            urlPattern: ({ url }) => url.pathname.includes("/assets/puzzles/"),
+            // generated art (puzzles + scene backdrops) - cache on first view
+            urlPattern: ({ url }) => url.pathname.includes("/assets/puzzles/") || url.pathname.includes("/assets/scenes/"),
             handler: "CacheFirst",
             options: {
-              cacheName: "puzzle-art",
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheName: "bb-art",
+              expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 90 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

@@ -292,6 +292,44 @@ export function getLearnQuestion(subject, level = 0, rng = Math.random) {
   return getQuestion(level, rng);
 }
 
+// ---------- categories (used to pick the subject in multiplayer rooms) ----------
+export const CATEGORIES = [
+  { key: "mix", emoji: "🎲", name: "Everything" },
+  { key: "math", emoji: "➕", name: "Math" },
+  { key: "pictures", emoji: "🖼️", name: "Pictures" },
+  { key: "letters", emoji: "🔤", name: "Letters" },
+  { key: "numbers", emoji: "🔢", name: "Numbers" },
+  { key: "shapes", emoji: "🔷", name: "Shapes" },
+  { key: "colors", emoji: "🎨", name: "Colors" },
+  { key: "reading", emoji: "📖", name: "Reading" },
+  { key: "science", emoji: "🔬", name: "Science" },
+  { key: "geography", emoji: "🌍", name: "World" },
+];
+
+function bankByTopic(topic, level, rng) {
+  const pool = BANK.filter((q) => q.topic === topic && (q.minLevel || 0) <= level);
+  const all = pool.length ? pool : BANK.filter((q) => q.topic === topic);
+  if (!all.length) return getQuestion(level, rng);
+  const p = pick(all, rng);
+  return { topic: p.topic, prompt: p.prompt, choices: [...p.choices], correctIndex: p.correctIndex };
+}
+
+// One question for a chosen category key.
+export function getCategoryQuestion(category, level = 0, rng = Math.random) {
+  switch (category) {
+    case "math": return makeMath(level, rng);
+    case "pictures": { const m = pick(PICTURE_MAKERS, rng); return m === makeCount ? m(level, rng) : m(rng); }
+    case "letters": return makeLetterQ(rng);
+    case "numbers": return makeNumberQ(level, rng);
+    case "shapes": return makeShapeQ(rng);
+    case "colors": return makeColorQ(rng);
+    case "reading": return bankByTopic("Reading", level, rng);
+    case "science": return bankByTopic("Science", level, rng);
+    case "geography": return bankByTopic("Geography", level, rng);
+    default: return getQuestion(level, rng);
+  }
+}
+
 // Return a question for the given difficulty level. Heavily weighted toward
 // visual picture questions (kids love them), with math and text mixed in.
 export function getQuestion(level = 0, rng = Math.random) {
