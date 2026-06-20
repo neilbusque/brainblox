@@ -12,6 +12,7 @@ import { colorForId } from "./avatar.js";
 
 const MODES = [
   { key: "obby", emoji: "🏃", name: "Obstacle Course", desc: "Run the course together" },
+  { key: "explore", emoji: "🌍", name: "Explore Together", desc: "Hang out + voice chat" },
   { key: "classroom", emoji: "👩‍🏫", name: "Classroom", desc: "Teacher asks, kids answer" },
 ];
 
@@ -126,8 +127,8 @@ export function startRoom(choice, cb) {
     if (mode === "classroom") {
       mountClassroom(category);
     } else {
-      // obby: reconnect with its own world (leave handled by room.destroy)
-      const go = () => cb.launchObby(choice.code, choice.name, category);
+      // obby / explore: reconnect with its own world (leave handled by room.destroy)
+      const go = () => (mode === "explore" ? cb.launchExplore(choice.code, choice.name) : cb.launchObby(choice.code, choice.name, category));
       if (isInitiator) setTimeout(go, 250); // let the start message flush
       else go();
     }

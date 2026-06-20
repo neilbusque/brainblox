@@ -45,13 +45,18 @@ async function boot() {
   const choice = await showLobby();
   unlockAudio();
   playerName = choice.name;
-  if (choice.mode === "multi") openActivity(() => startRoom(choice, { launchObby }));
+  if (choice.mode === "multi") openActivity(() => startRoom(choice, { launchObby, launchExplore }));
   else openExplore();
 }
 
 // launch the multiplayer obby from the room lobby (its own reconnecting world)
 function launchObby(code, name, category) {
   openActivity((goHome) => startGame({ mode: "multi", name, code, category }, goHome));
+}
+
+// launch the multiplayer explore world - friends roam together with voice
+function launchExplore(code, name) {
+  openActivity(() => startExplore((key) => openActivity(LAUNCHERS[key]), { multiplayer: { code, name }, onExit: goHome }));
 }
 
 // the 3D explore world is the solo hub - walk to a building to enter an activity

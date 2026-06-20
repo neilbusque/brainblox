@@ -11,6 +11,10 @@ import { createFollowCamera, intentToWorld } from "./camera.js";
 import { toonMat, roundedGeo, markBloom } from "./gfx.js";
 import { createPostFX } from "./postfx.js";
 import { sfx } from "./audio.js";
+import { createNet, MULTIPLAYER_AVAILABLE } from "./net.js";
+import { createVoice } from "./voice.js";
+import { createRemotePlayers } from "./remotePlayers.js";
+import { colorForId } from "./avatar.js";
 
 const HIGH_END = !isTouchDevice() && window.devicePixelRatio < 2.5 && (navigator.hardwareConcurrency || 4) > 4;
 const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
@@ -26,7 +30,8 @@ const ZONES = [
   { key: "maze", name: "Maze", emoji: "🌀", img: "library", color: 0xbfa1ff },
 ];
 
-export function startExplore(onEnter) {
+export function startExplore(onEnter, opts = {}) {
+  const mp = opts.multiplayer || null; // { code, name } -> friends roam together
   const root = document.getElementById("game-root");
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -270,6 +275,33 @@ export function startExplore(onEnter) {
 
   const postfx = createPostFX(renderer, scene, camera.cam, { low: LOW });
 
+  // ---------- multiplayer: friends roam the world together ----------
+  let net = null, voice = null, remote = null, myId = null;
+  if (mp && MULTIPLAYER_AVAILABLE) setupMultiplayer();
+  async function setupMultiplayer() {
+    net = createNet();
+    myId = crypto.randomUUID();
+    const me = { id: myId, name: mp.name, color: colorForId(myId) };
+    avatar.setBodyColor(me.color);
+    remote = createRemotePlayers();
+    scene.add(remote.group);
+    net.on("roster", (players) => remote.syncRoster(players.filter((p) => p.id !== myId)));
+    net.on("state", (packet) => remote.applyState(packet));
+    const ok = await net.join(mp.code, me);
+    if (!ok) return;
+    voice = createVoice(net, {});
+    voice.wire();
+    const started = await voice.start();
+    // a small Leave + mic bar
+    const bar = document.getElementById("explore-bar");
+    bar.classList.remove("hidden");
+    bar.innerHTML = `<button class="icon-btn ${voice && started ? "muted" : ""}" id="ex-mute">${started ? "🔇" : "🚫"}</button><button class="btn" id="ex-leave">🚪 Leave</button><span class="ex-tag">👋 Walk around with friends!</span>`;
+    if (started) {
+      bar.querySelector("#ex-mute").addEventListener("click", () => { const m = voice.toggleMute(); bar.querySelector("#ex-mute").textContent = m ? "🔇" : "🎤"; bar.querySelector("#ex-mute").classList.toggle("muted", m); bar.querySelector("#ex-mute").classList.toggle("live", !m); });
+    }
+    bar.querySelector("#ex-leave").addEventListener("click", () => opts.onExit && opts.onExit());
+  }
+
   // ---------- enter prompt (DOM) ----------
   const prompt = document.getElementById("explore-prompt");
   let activePortal = null;
@@ -309,14 +341,16 @@ export function startExplore(onEnter) {
     if (d > R) { player.pos.x *= R / d; player.pos.z *= R / d; }
     if (player.pos.y < -10) respawn(player, { x: 0, y: 1.5, z: -7 });
 
-    // nearest portal pad
-    let near = null, nd = 3.2;
-    for (const p of portals) {
-      const pd = Math.hypot(player.pos.x - p.padPos.x, player.pos.z - p.padPos.z);
-      if (pd < nd) { nd = pd; near = p; }
+    // nearest portal pad (solo only - multiplayer is a hangout space)
+    if (!mp) {
+      let near = null, nd = 3.2;
+      for (const p of portals) {
+        const pd = Math.hypot(player.pos.x - p.padPos.x, player.pos.z - p.padPos.z);
+        if (pd < nd) { nd = pd; near = p; }
+      }
+      if (near && near !== activePortal) showPrompt(near);
+      else if (!near && activePortal) hidePrompt();
     }
-    if (near && near !== activePortal) showPrompt(near);
-    else if (!near && activePortal) hidePrompt();
 
     // animate
     avatar.root.position.set(player.pos.x, player.pos.y + 0.15, player.pos.z);
@@ -340,6 +374,12 @@ export function startExplore(onEnter) {
       const q = camera.cam.quaternion.clone(); n.spr.quaternion.copy(q);
     }
 
+    // multiplayer: broadcast my position + draw friends
+    if (net) {
+      net.sendState({ x: player.pos.x, y: player.pos.y, z: player.pos.z, ry: player.facing, anim: player.anim });
+      remote.update(dt, camera.cam);
+    }
+
     postfx.render();
     if (alive) rafId = requestAnimationFrame(frame);
   }
@@ -357,6 +397,9 @@ export function startExplore(onEnter) {
     prompt.classList.add("hidden");
     controls.destroy?.();
     document.getElementById("touch-controls")?.classList.add("hidden");
+    if (voice) voice.stop();
+    if (net) net.leave();
+    document.getElementById("explore-bar")?.classList.add("hidden");
     renderer.dispose();
     if (renderer.domElement.parentElement) renderer.domElement.parentElement.removeChild(renderer.domElement);
   }

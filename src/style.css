@@ -1218,3 +1218,23 @@ body {
 }
 .mh-pill.low { color: var(--bad); animation: starpop 0.5s ease-in-out infinite; }
 #mode-result { z-index: 60; background: rgba(27, 42, 82, 0.45); }
+
+/* multiplayer bar in the explore world */
+.explore-bar {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  translate: -50% 0;
+  z-index: 56;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  padding: 6px 10px;
+  box-shadow: var(--shadow);
+}
+.explore-bar .icon-btn { width: 40px; height: 40px; box-shadow: none; }
+.explore-bar .btn { padding: 8px 14px; font-size: 15px; box-shadow: 0 4px 0 rgba(29,43,83,.15); }
+.explore-bar .ex-tag { font-weight: 800; font-size: 14px; color: #5b6a99; padding-right: 6px; }
+@media (max-width: 480px) { .explore-bar .ex-tag { display: none; } }
