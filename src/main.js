@@ -559,6 +559,7 @@ function startGame(choice, onHome) {
     winHomeBtn.removeEventListener("click", onWinHome);
     controls.destroy?.();
     emotes.destroy?.();
+    remote.destroy?.();
     if (voice) voice.stop();
     if (net) net.leave();
     document.getElementById("hud").classList.add("hidden");

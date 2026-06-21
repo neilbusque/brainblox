@@ -93,5 +93,8 @@ export function createRemotePlayers() {
     p._emoteT = setTimeout(() => { if (p.anim === anim) p.anim = "idle"; }, ms);
   }
 
-  return { group, ensure, applyState, syncRoster, remove, update, list, playEmote, count: () => peers.size };
+  // tear every peer down (avatars + pending emote timers) when leaving a mode
+  function destroy() { for (const id of [...peers.keys()]) remove(id); }
+
+  return { group, ensure, applyState, syncRoster, remove, update, list, playEmote, destroy, count: () => peers.size };
 }

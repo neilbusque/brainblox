@@ -492,11 +492,12 @@ body.in-3d.touch .jump-btn { display: flex; }
 }
 .action-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #3aa5cf; }
 
-/* radial emote wheel, anchored above-left of the emote button */
+/* radial emote wheel - JS sets left/top to the emote button's live position so
+   it lines up in both layouts; options fan up + sideways from that point. */
 .emote-wheel {
   position: fixed;
-  right: 112px;
-  bottom: 210px;
+  left: 0;
+  top: 0;
   width: 0;
   height: 0;
   z-index: 58;
@@ -535,8 +536,9 @@ body.in-3d.touch .jump-btn { display: flex; }
 }
 .music-btn.off { opacity: 0.5; filter: grayscale(0.8); }
 
-/* keep the obby HUD's right cluster clear of the corner music button */
-.hud-top { padding-right: 50px; }
+/* keep the obby HUD's right cluster clear of the corner music button, honoring
+   the notch inset on landscape phones */
+.hud-top { padding-right: max(50px, calc(env(safe-area-inset-right) + 50px)); }
 
 /* ---------- flash message ---------- */
 .flash {

@@ -506,6 +506,7 @@ export function startExplore(onEnter, opts = {}) {
     controls.destroy?.();
     emotes.destroy?.();
     interactions.destroy?.();
+    if (remote) remote.destroy();
     if (voice) voice.stop();
     if (net) net.leave();
     document.getElementById("explore-bar")?.classList.add("hidden");

@@ -29,14 +29,15 @@ export function createInteractions() {
   function update(playerPos) {
     if (!enabled) { if (active) { active = null; hide(); } return null; }
     let best = null, bd = Infinity;
-    const all = staticSpots.concat(getDynamic());
-    for (const s of all) {
+    const consider = (s) => {
       const dx = playerPos.x - s.pos.x;
       const dz = playerPos.z - s.pos.z;
       const d = Math.hypot(dx, dz);
       const range = s.range ?? 2.8;
       if (d < range && d < bd) { bd = d; best = s; }
-    }
+    };
+    for (const s of staticSpots) consider(s); // no per-frame concat allocation
+    for (const s of getDynamic()) consider(s);
     // compare by identity OR by a stable key so moving NPCs don't re-flash
     const changed = (best && best.key) !== (active && active.key) || (!best !== !active);
     if (changed) {

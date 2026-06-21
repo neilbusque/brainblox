@@ -32,9 +32,7 @@ export function createEmoteState() {
     },
     tick(dt, moving) {
       if (!key) return;
-      // moving cancels everything except the brief one-shots already finishing
-      if (moving && key !== "wave" && key !== "point") { key = null; remaining = 0; return; }
-      if (moving) { key = null; remaining = 0; return; }
+      if (moving) { key = null; remaining = 0; return; } // walking ends any emote
       remaining -= dt;
       if (remaining <= 0) { key = null; remaining = 0; }
     },
@@ -61,8 +59,10 @@ export function createEmotes({ onPlay } = {}) {
     wheel.innerHTML = "";
     const n = EMOTES.length;
     EMOTES.forEach((e, i) => {
-      const a = (i / n) * Math.PI * 2 - Math.PI / 2; // start at top
-      const r = 92;
+      // fan across the UPPER half-circle (PI..2PI) so options rise up + sideways
+      // from the button - never straight down onto the Jump button.
+      const a = Math.PI + (i / (n - 1)) * Math.PI;
+      const r = 82;
       const b = document.createElement("button");
       b.className = "emote-opt";
       b.style.left = `calc(50% + ${Math.cos(a) * r}px)`;
@@ -79,7 +79,16 @@ export function createEmotes({ onPlay } = {}) {
 
   function setOpen(v) {
     open = v;
-    if (wheel) wheel.classList.toggle("open", v);
+    if (wheel) {
+      // anchor the wheel over the emote button's live position so it lines up in
+      // both layouts (desktop: button at the edge; touch: button left of Jump).
+      if (v && btn) {
+        const r = btn.getBoundingClientRect();
+        wheel.style.left = `${r.left + r.width / 2}px`;
+        wheel.style.top = `${r.top - 6}px`;
+      }
+      wheel.classList.toggle("open", v);
+    }
     if (btn) btn.classList.toggle("active", v);
   }
 

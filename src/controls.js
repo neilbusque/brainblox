@@ -66,12 +66,12 @@ export function createControls() {
     stick && stick.classList.remove("live");
   }
 
-  // decide what a fresh pointer means: lower-left on touch = joystick, else look
+  // decide what a fresh pointer means: lower-left quadrant on touch = joystick,
+  // everywhere else = look-drag (so the upper-left can still look around).
   function roleFor(e) {
     if (e.pointerType === "mouse") return e.button === 0 ? "look" : null;
-    const leftZone = e.clientX < window.innerWidth * 0.5;
-    const belowTop = e.clientY > 76; // keep the HUD top bar tappable
-    return leftZone && belowTop && !joy.active ? "joy" : "look";
+    const lowerLeft = e.clientX < window.innerWidth * 0.5 && e.clientY > window.innerHeight * 0.5;
+    return lowerLeft && !joy.active ? "joy" : "look";
   }
 
   const onDown = (e) => {

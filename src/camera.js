@@ -18,8 +18,11 @@ export function createFollowCamera(aspect, opts = {}) {
   const baseHeight = opts.height ?? 5.5;
   const RADIUS = Math.hypot(baseDist, baseHeight);
   const BASE_PITCH = Math.atan2(baseHeight, baseDist);
-  const PITCH_MIN = BASE_PITCH - 0.32; // peek down a bit
-  const PITCH_MAX = BASE_PITCH + 0.42; // peek up a bit (never overhead/flip)
+  // hard-cap strictly below vertical so cos(pitch) can never go non-positive and
+  // flip the camera over the player - matters for steep rigs like the Maze
+  // (camHeight 13, camDist 4 -> BASE_PITCH 1.27, which is already near PI/2).
+  const PITCH_MIN = Math.max(BASE_PITCH - 0.32, 0.12); // peek down a bit
+  const PITCH_MAX = Math.min(BASE_PITCH + 0.42, Math.PI / 2 - 0.12); // peek up, never overhead
   const LOOK_AT_Y = 1; // aim at the chest, not the feet
 
   const state = { yaw: 0, pitch: BASE_PITCH };

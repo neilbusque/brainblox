@@ -72,6 +72,18 @@ describe("createFollowCamera", () => {
     expect(c.state.pitch).toBeCloseTo(capped); // already at the ceiling
   });
 
+  it("steep rigs (Maze) never let pitch cross vertical -> camera stays on the player's side", () => {
+    const c = createFollowCamera(1.6, { dist: 4, height: 13 }); // the Maze rig
+    const p = { x: 0, y: 1, z: 0 };
+    c.snap(p);
+    const zBehind = c.cam.position.z; // behind the player at rest
+    for (let i = 0; i < 30; i++) c.rotate(0, 1); // shove the look all the way up
+    c.snap(p); // recompute position at the clamped pitch
+    // camera must remain BEHIND (same side, -z) - a flip would push it to +z
+    expect(Math.sign(c.cam.position.z)).toBe(Math.sign(zBehind));
+    expect(c.cam.position.z).toBeLessThan(0);
+  });
+
   it("auto-follow eases yaw toward facing only while moving", () => {
     const c = createFollowCamera(1.6);
     c.snap(pos);
