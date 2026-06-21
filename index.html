@@ -14,13 +14,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/png" href="icon-192.png" />
     <link rel="apple-touch-icon" href="apple-touch-180.png" />
-    <script type="module" crossorigin src="/brainblox/assets/index-Cq_WypHY.js"></script>
-    <link rel="stylesheet" crossorigin href="/brainblox/assets/index-r1Oyq_J2.css">
+    <script type="module" crossorigin src="/brainblox/assets/index-CKNtQZsA.js"></script>
+    <link rel="stylesheet" crossorigin href="/brainblox/assets/index-Bw8vfjp-.css">
   <link rel="manifest" href="/brainblox/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/brainblox/registerSW.js"></script></head>
   <body>
     <!-- 3D canvas lives here (added by Three.js) -->
     <div id="game-root"></div>
     <div class="vignette"></div>
+
+    <!-- full-screen input layer: routes drag-to-look + the floating joystick.
+         sits BELOW the buttons so taps on Jump/Emote/Action are never stolen.
+         shown only in 3D modes via body.in-3d. -->
+    <div id="input-layer" class="input-layer"></div>
 
     <!-- ============ LOBBY / START SCREEN ============ -->
     <div id="lobby" class="screen">
@@ -128,14 +133,24 @@
       <div id="powerups" class="powerups"></div>
     </div>
 
-    <!-- touch controls (top-level so they show in every 3D mode, not just when
-         the HUD is visible; gated to touch devices in JS) -->
-    <div id="touch-controls" class="hidden">
-      <div id="joystick" class="joystick">
-        <div id="joystick-knob" class="joystick-knob"></div>
-      </div>
-      <button id="jump-btn" class="jump-btn">JUMP</button>
+    <!-- ============ GAME CONTROLS (3D modes) ============ -->
+    <!-- floating thumb-stick (touch only); JS re-anchors it under the thumb -->
+    <div id="joystick" class="joystick">
+      <div id="joystick-knob" class="joystick-knob"></div>
     </div>
+
+    <!-- right-hand cluster: contextual Action, the emote wheel, Emote + Jump -->
+    <div id="action-cluster" class="action-cluster">
+      <button id="action-btn" class="action-btn hidden"></button>
+      <div id="emote-wheel" class="emote-wheel"></div>
+      <div class="ac-row">
+        <button id="emote-btn" class="emote-btn hidden" aria-label="Emotes">😄</button>
+        <button id="jump-btn" class="jump-btn">JUMP</button>
+      </div>
+    </div>
+
+    <!-- global music toggle (top-right, shown once play starts) -->
+    <button id="music-btn" class="icon-btn music-btn hidden" title="Music">🎵</button>
 
     <!-- ============ QUIZ ARCADE (alternate mode) ============ -->
     <div id="arcade" class="hidden">
