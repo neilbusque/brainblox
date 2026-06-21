@@ -108,10 +108,18 @@ export function createAvatar(bodyColor = 0x5cc6f0, name = "", hat = "none") {
     root.add(tag);
   }
 
+  // reset any per-frame transforms an emote may have set so states don't bleed
+  function neutralExtras() {
+    root.rotation.z = 0;
+    root.rotation.x = 0;
+    armL.rotation.z = 0;
+    armR.rotation.z = 0;
+  }
+
   let t = 0;
   function update(anim, dt, camera) {
     t += dt;
-    if (anim !== "cheer") root.rotation.z = 0; // clear cheer tilt
+    neutralExtras();
     if (anim === "run") {
       const s = Math.sin(t * 12) * 0.95;
       legL.rotation.x = s;
@@ -135,8 +143,43 @@ export function createAvatar(bodyColor = 0x5cc6f0, name = "", hat = "none") {
       legR.rotation.x = 0;
       torso.position.y = b * 0.12;
       root.rotation.z = Math.sin(t * 16) * 0.05;
+    } else if (anim === "wave") {
+      // right arm raised, waving side-to-side; left arm relaxed
+      legL.rotation.x = 0; legR.rotation.x = 0;
+      armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, 0, 0.2);
+      armR.rotation.x = -2.6;
+      armR.rotation.z = Math.sin(t * 12) * 0.5 - 0.2;
+      torso.position.y = Math.sin(t * 2) * 0.03;
+    } else if (anim === "dance") {
+      // arms pump up, hips + torso sway side to side
+      const s = Math.sin(t * 9);
+      armL.rotation.x = -2.4 + s * 0.4;
+      armR.rotation.x = -2.4 - s * 0.4;
+      legL.rotation.x = s * 0.3;
+      legR.rotation.x = -s * 0.3;
+      torso.position.y = Math.abs(Math.sin(t * 9)) * 0.1;
+      root.rotation.z = Math.sin(t * 4.5) * 0.18;
+    } else if (anim === "sit") {
+      // legs folded forward, arms resting, body settled low
+      legL.rotation.x = THREE.MathUtils.lerp(legL.rotation.x, -1.5, 0.3);
+      legR.rotation.x = THREE.MathUtils.lerp(legR.rotation.x, -1.5, 0.3);
+      armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, -0.4, 0.3);
+      armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -0.4, 0.3);
+      torso.position.y = THREE.MathUtils.lerp(torso.position.y, -0.18, 0.3);
+    } else if (anim === "laugh") {
+      // lean back, hands toward belly, fast bob
+      root.rotation.x = -0.18;
+      armL.rotation.x = -1.1; armR.rotation.x = -1.1;
+      armL.rotation.z = 0.5; armR.rotation.z = -0.5;
+      legL.rotation.x = 0; legR.rotation.x = 0;
+      torso.position.y = Math.abs(Math.sin(t * 14)) * 0.08;
+    } else if (anim === "point") {
+      // right arm extended forward, weight shifted
+      legL.rotation.x = 0; legR.rotation.x = 0;
+      armL.rotation.x = THREE.MathUtils.lerp(armL.rotation.x, 0, 0.2);
+      armR.rotation.x = THREE.MathUtils.lerp(armR.rotation.x, -1.55, 0.3);
+      torso.position.y = Math.sin(t * 2) * 0.03;
     } else {
-      root.rotation.z = 0;
       const e = 0.15;
       for (const l of [legL, legR, armL, armR]) l.rotation.x = THREE.MathUtils.lerp(l.rotation.x, 0, e);
       torso.position.y = Math.sin(t * 2) * 0.03;

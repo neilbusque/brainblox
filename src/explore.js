@@ -8,6 +8,8 @@ import { createPlayer, updatePlayer, respawn } from "./player.js";
 import { createAvatar } from "./avatar.js";
 import { createControls, isTouchDevice } from "./controls.js";
 import { createFollowCamera, intentToWorld } from "./camera.js";
+import { createEmotes } from "./emotes.js";
+import { createInteractions } from "./interactions.js";
 import { toonMat, roundedGeo, markBloom } from "./gfx.js";
 import { createPostFX } from "./postfx.js";
 import { sfx } from "./audio.js";
@@ -141,10 +143,15 @@ export function startExplore(onEnter, opts = {}) {
     const back = new THREE.Mesh(roundedGeo(2, 0.6, 0.15, 0.06, 1), benchMat); back.position.set(0, 0.95, -0.28);
     g.add(seat, back); g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
   }
+  const benchSpots = [];
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.5;
     lamppost(Math.cos(a) * 13, Math.sin(a) * 13);
-    if (i % 2 === 0) bench(Math.cos(a + 0.3) * 9.5, Math.sin(a + 0.3) * 9.5, -a);
+    if (i % 2 === 0) {
+      const bx = Math.cos(a + 0.3) * 9.5, bz = Math.sin(a + 0.3) * 9.5;
+      bench(bx, bz, -a);
+      benchSpots.push({ x: bx, z: bz });
+    }
   }
 
   // flowers + bushes
@@ -283,7 +290,7 @@ export function startExplore(onEnter, opts = {}) {
   const camera = createFollowCamera(window.innerWidth / window.innerHeight);
   camera.snap(player.pos);
   const controls = createControls();
-  if (isTouchDevice()) document.getElementById("touch-controls").classList.remove("hidden");
+  const emotes = createEmotes({ onPlay: (key) => { if (net) net.sendState({ x: player.pos.x, y: player.pos.y, z: player.pos.z, ry: player.facing, anim: key }); } });
 
   const postfx = createPostFX(renderer, scene, camera.cam, { low: LOW });
 
@@ -299,6 +306,7 @@ export function startExplore(onEnter, opts = {}) {
     scene.add(remote.group);
     net.on("roster", (players) => remote.syncRoster(players.filter((p) => p.id !== myId)));
     net.on("state", (packet) => remote.applyState(packet));
+    net.on("msg", onSocialMessage);
     const ok = await net.join(mp.code, me);
     if (!ok) return;
     voice = createVoice(net, {});
@@ -332,18 +340,102 @@ export function startExplore(onEnter, opts = {}) {
   }
   const onPromptClick = () => enter();
   prompt.addEventListener("click", onPromptClick);
-  const onKey = (e) => { if ((e.key === "Enter" || e.key === "e") && activePortal) enter(); };
+  const onKey = (e) => { if (e.key === "Enter" && activePortal) enter(); }; // "E" is for world interactions
   window.addEventListener("keydown", onKey);
   function flashSoon() {
     prompt.animate([{ transform: "translateX(-50%) scale(1.1)" }, { transform: "translateX(-50%) scale(1)" }], { duration: 300 });
   }
 
+  // ---------- particles (hearts / sparkles / splashes) ----------
+  const texCache = new Map();
+  function emojiTex(ch) {
+    if (texCache.has(ch)) return texCache.get(ch);
+    const c = document.createElement("canvas"); c.width = c.height = 64;
+    const ctx = c.getContext("2d");
+    ctx.font = "48px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(ch, 32, 36);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    texCache.set(ch, tex); return tex;
+  }
+  const bursts = [];
+  function spawnBurst(pos, ch, n = 6, spread = 0.6, rise = 2.2) {
+    const tex = emojiTex(ch);
+    for (let i = 0; i < n; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+      s.position.set(pos.x + (Math.random() - 0.5) * spread, pos.y + Math.random() * 0.4, pos.z + (Math.random() - 0.5) * spread);
+      s.scale.setScalar(0.6 + Math.random() * 0.3);
+      scene.add(s);
+      bursts.push({ s, vx: (Math.random() - 0.5) * 1.2, vy: rise + Math.random() * 1.2, vz: (Math.random() - 0.5) * 1.2, life: 0, max: 0.9 + Math.random() * 0.4 });
+    }
+  }
+  function updateBursts(dt) {
+    for (let i = bursts.length - 1; i >= 0; i--) {
+      const b = bursts[i]; b.life += dt;
+      b.s.position.x += b.vx * dt; b.s.position.y += b.vy * dt; b.s.position.z += b.vz * dt;
+      b.vy -= 3 * dt;
+      b.s.material.opacity = Math.max(0, 1 - b.life / b.max);
+      if (b.life >= b.max) { scene.remove(b.s); b.s.material.dispose(); bursts.splice(i, 1); }
+    }
+  }
+
+  // ---------- world + social interactions ----------
+  const interactions = createInteractions();
+  let wishCooldown = 0; // throttle fountain coins
+  function hopPlayer() { if (player.grounded) { player.vel.y = 8; player.grounded = false; } }
+
+  function doSplash() { sfx.splash(); hopPlayer(); spawnBurst({ x: player.pos.x, y: player.pos.y + 0.3, z: player.pos.z }, "💦", 8, 0.9, 2.6); }
+  function doWish() {
+    sfx.sparkle();
+    spawnBurst({ x: 0, y: 2.4, z: 0 }, "✨", 8, 1.0, 2.4);
+    if (wishCooldown <= 0) { profile.addCoins(1); spawnBurst({ x: 0, y: 1.6, z: 0 }, "🪙", 1, 0.2, 1.6); wishCooldown = 4; }
+  }
+  function petNpc(spot) {
+    sfx.emote && sfx.emote();
+    if (spot.npc) spot.npc.spr.position.y += 0.5;
+    spawnBurst({ x: spot.pos.x, y: 1.8, z: spot.pos.z }, "💛", 4, 0.5, 2.0);
+  }
+  function highfive(spot) {
+    emotes.play("wave");
+    sfx.highfive();
+    const mid = { x: (player.pos.x + spot.pos.x) / 2, y: 1.8, z: (player.pos.z + spot.pos.z) / 2 };
+    spawnBurst(mid, "🙌", 5, 0.6, 2.0);
+    if (net) net.sendMsg("social", { kind: "highfive", to: spot.id });
+  }
+  // a friend high-fived us back -> play it on their avatar + sparkle between us
+  function onSocialMessage(payload) {
+    if (!payload || payload.kind !== "highfive") return;
+    if (payload.to && payload.to !== myId) return; // aimed at someone else
+    if (remote) remote.playEmote(payload.from, "wave");
+    sfx.highfive();
+    const peer = remote && remote.list().find((p) => p.id === payload.from);
+    if (peer) spawnBurst({ x: (player.pos.x + peer.pos.x) / 2, y: 1.8, z: (player.pos.z + peer.pos.z) / 2 }, "🙌", 5, 0.6, 2.0);
+  }
+
+  // static spots: benches (sit), pool (splash), fountain (wish), playground (dance)
+  interactions.setSpots([
+    ...benchSpots.map((b, i) => ({ key: `bench${i}`, pos: b, range: 2.3, icon: "🪑", label: "Sit", act: () => emotes.play("sit") })),
+    { key: "pool", pos: { x: 16, z: 16 }, range: 5.6, icon: "🏊", label: "Splash", act: doSplash },
+    { key: "fountain", pos: { x: 0, z: 0 }, range: 3.6, icon: "🪙", label: "Make a Wish", act: doWish },
+    { key: "swing", pos: { x: -16, z: 16 }, range: 3.4, icon: "🛝", label: "Play", act: () => emotes.play("dance") },
+  ]);
+  // dynamic spots: wandering NPCs (pet) + nearby friends (high-five)
+  interactions.setDynamic(() => {
+    const out = npcs.map((n, i) => ({ key: `npc${i}`, pos: { x: n.spr.position.x, z: n.spr.position.z }, range: 2.4, icon: "🐾", label: "Pet", npc: n, act: petNpc }));
+    if (remote) for (const p of remote.list()) out.push({ key: `hi-${p.id}`, pos: { x: p.pos.x, z: p.pos.z }, range: 3.0, icon: "🙌", label: "High-five", id: p.id, act: highfive });
+    return out;
+  });
+
   // ---------- loop ----------
   let alive = true, last = performance.now(), elapsed = 0, rafId = 0;
   function frame(now) {
     const dt = Math.min((now - last) / 1000, 0.05); last = now; elapsed += dt;
+    if (wishCooldown > 0) wishCooldown -= dt;
     const inRaw = controls.getInput();
+    const look = controls.getLook();
+    if (look.dx || look.dy) camera.rotate(look.dx, look.dy);
     const dir = intentToWorld(inRaw.fwd, inRaw.right, camera.state.yaw);
+    const moving = Math.hypot(inRaw.fwd, inRaw.right) > 0.05;
+    emotes.tick(dt, moving);
     const wasGrounded = player.grounded;
     updatePlayer(player, dt, { moveX: dir.x, moveZ: dir.z, jump: inRaw.jump }, colliders);
     if (inRaw.jump && wasGrounded) sfx.jump();
@@ -364,11 +456,15 @@ export function startExplore(onEnter, opts = {}) {
       else if (!near && activePortal) hidePrompt();
     }
 
+    // contextual world/social interactions (sit, splash, wish, pet, high-five)
+    interactions.update(player.pos);
+    updateBursts(dt);
+
     // animate
     avatar.root.position.set(player.pos.x, player.pos.y + 0.15, player.pos.z);
     avatar.root.rotation.y = player.facing;
-    avatar.update(player.anim, dt, camera.cam);
-    camera.follow(player.pos, dt);
+    avatar.update(emotes.current() || player.anim, dt, camera.cam);
+    camera.follow(player.pos, dt, { facing: player.facing, moving });
     sun.position.set(player.pos.x + 18, 34, player.pos.z + 12);
     sun.target.position.set(player.pos.x, 0, player.pos.z);
     water.rotation.y += dt;
@@ -386,9 +482,9 @@ export function startExplore(onEnter, opts = {}) {
       const q = camera.cam.quaternion.clone(); n.spr.quaternion.copy(q);
     }
 
-    // multiplayer: broadcast my position + draw friends
+    // multiplayer: broadcast my position (+ active emote) + draw friends
     if (net) {
-      net.sendState({ x: player.pos.x, y: player.pos.y, z: player.pos.z, ry: player.facing, anim: player.anim });
+      net.sendState({ x: player.pos.x, y: player.pos.y, z: player.pos.z, ry: player.facing, anim: emotes.current() || player.anim });
       remote.update(dt, camera.cam);
     }
 
@@ -408,7 +504,8 @@ export function startExplore(onEnter, opts = {}) {
     prompt.removeEventListener("click", onPromptClick);
     prompt.classList.add("hidden");
     controls.destroy?.();
-    document.getElementById("touch-controls")?.classList.add("hidden");
+    emotes.destroy?.();
+    interactions.destroy?.();
     if (voice) voice.stop();
     if (net) net.leave();
     document.getElementById("explore-bar")?.classList.add("hidden");

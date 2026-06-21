@@ -50,6 +50,7 @@ export function createRemotePlayers() {
   function remove(id) {
     const p = peers.get(id);
     if (!p) return;
+    clearTimeout(p._emoteT);
     group.remove(p.avatar.root);
     p.avatar.root.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
@@ -77,5 +78,20 @@ export function createRemotePlayers() {
     }
   }
 
-  return { group, ensure, applyState, syncRoster, remove, update, count: () => peers.size };
+  // snapshot of where each peer currently is (for proximity interactions)
+  function list() {
+    const out = [];
+    for (const [id, p] of peers) out.push({ id, name: p.name, pos: { x: p.cur.x, y: p.cur.y, z: p.cur.z } });
+    return out;
+  }
+  // make a peer play a one-shot emote (e.g. they high-fived us back)
+  function playEmote(id, anim, ms = 1800) {
+    const p = peers.get(id);
+    if (!p) return;
+    p.anim = anim;
+    clearTimeout(p._emoteT);
+    p._emoteT = setTimeout(() => { if (p.anim === anim) p.anim = "idle"; }, ms);
+  }
+
+  return { group, ensure, applyState, syncRoster, remove, update, list, playEmote, count: () => peers.size };
 }

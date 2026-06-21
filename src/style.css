@@ -376,45 +376,85 @@ body {
   outline: 3px solid var(--good);
 }
 
-/* ---------- touch controls ---------- */
-/* top-level fixed layer so the joystick/jump show in EVERY 3D mode (not only
-   when the HUD is visible). pointer-events:none here; the pads re-enable it. */
-#touch-controls {
+/* ---------- game controls (3D modes) ---------- */
+/* full-screen pointer layer for drag-to-look + joystick routing. sits BELOW the
+   buttons (z 6) so taps on Jump/Emote/Action are never stolen; shown only in 3D
+   modes via body.in-3d. */
+.input-layer {
+  display: none;
   position: fixed;
   inset: 0;
+  z-index: 6;
+  touch-action: none;
+  cursor: grab;
+}
+body.in-3d .input-layer { display: block; }
+.input-layer:active { cursor: grabbing; }
+
+/* floating thumb-stick: springs up under the thumb on touch, hidden otherwise.
+   JS sets left/top to the touch point; margin centers it on that point. */
+.joystick {
+  display: none;
+  position: fixed;
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18));
+  border: 4px solid rgba(255, 255, 255, 0.55);
   z-index: 57;
   pointer-events: none;
+  box-shadow: var(--shadow);
 }
-.joystick {
-  pointer-events: auto;
-  position: absolute;
-  bottom: max(28px, env(safe-area-inset-bottom));
-  left: max(26px, calc(env(safe-area-inset-left) + 14px));
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.2));
-  border: 4px solid rgba(255, 255, 255, 0.55);
-  touch-action: none;
-}
+.joystick.live { display: block; }
 .joystick-knob {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 58px;
-  height: 58px;
-  margin: -29px 0 0 -29px;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 35%, #ffffff, #dfeaff);
   box-shadow: var(--shadow), inset 0 2px 4px rgba(255, 255, 255, 0.9);
 }
+
+/* right-hand cluster (Action / Emote wheel / Emote + Jump) */
+.action-cluster {
+  display: none;
+  position: fixed;
+  right: max(20px, calc(env(safe-area-inset-right) + 12px));
+  bottom: max(28px, env(safe-area-inset-bottom));
+  z-index: 57;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: none;
+}
+body.in-3d .action-cluster { display: flex; }
+.action-cluster > * { pointer-events: auto; }
+.ac-row { display: flex; align-items: flex-end; gap: 14px; }
+
+.emote-btn {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: radial-gradient(circle at 50% 32%, #ffe27a, #ffd23f);
+  font-size: 36px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #d9a400, var(--shadow);
+  touch-action: none;
+  transition: transform 0.08s;
+}
+.emote-btn.active,
+.emote-btn:active { transform: translateY(2px); box-shadow: 0 3px 0 #d9a400; }
+
 .jump-btn {
-  pointer-events: auto;
-  position: absolute;
-  bottom: max(36px, env(safe-area-inset-bottom));
-  right: max(28px, calc(env(safe-area-inset-right) + 16px));
-  width: 110px;
-  height: 110px;
+  display: none;
+  width: 112px;
+  height: 112px;
   border-radius: 50%;
   border: 5px solid #fff;
   background: radial-gradient(circle at 50% 32%, #ffa98c, var(--accent));
@@ -423,14 +463,80 @@ body {
   font-weight: 900;
   font-size: 22px;
   cursor: pointer;
+  align-items: center;
+  justify-content: center;
   box-shadow: 0 6px 0 #c95a37, inset 0 3px 6px rgba(255, 255, 255, 0.4);
   text-shadow: 0 2px 0 rgba(27, 42, 82, 0.3);
   touch-action: none;
 }
+body.in-3d.touch .jump-btn { display: flex; }
 .jump-btn:active {
   transform: translateY(3px);
   box-shadow: 0 3px 0 #c95a37, inset 0 3px 6px rgba(255, 255, 255, 0.4);
 }
+
+/* contextual action button (sit / splash / wish / pet / high-five) */
+.action-btn {
+  padding: 12px 20px;
+  border-radius: 16px;
+  border: 4px solid #fff;
+  background: var(--accent-2);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 900;
+  font-size: 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 6px 0 #3aa5cf, var(--shadow);
+  animation: bob 1.4s ease-in-out infinite;
+}
+.action-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #3aa5cf; }
+
+/* radial emote wheel, anchored above-left of the emote button */
+.emote-wheel {
+  position: fixed;
+  right: 112px;
+  bottom: 210px;
+  width: 0;
+  height: 0;
+  z-index: 58;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.emote-wheel.open { opacity: 1; transform: scale(1); pointer-events: auto; }
+.emote-opt {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: #fff;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+}
+.emote-opt:active { transform: translate(-50%, -50%) scale(0.9); }
+.emote-opt .emote-ic { font-size: 27px; line-height: 1; }
+.emote-opt .emote-lbl { font-size: 9px; font-weight: 800; color: #5b6a99; margin-top: 1px; }
+
+/* global music toggle (top-right corner) */
+.music-btn {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, calc(env(safe-area-inset-right) + 14px));
+  z-index: 58;
+}
+.music-btn.off { opacity: 0.5; filter: grayscale(0.8); }
+
+/* keep the obby HUD's right cluster clear of the corner music button */
+.hud-top { padding-right: 50px; }
 
 /* ---------- flash message ---------- */
 .flash {

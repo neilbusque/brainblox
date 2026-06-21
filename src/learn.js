@@ -44,7 +44,7 @@ export function startLearn(onHome) {
   async function runSubject(subject) {
     root.innerHTML = "";
     document.getElementById("hud")?.classList.remove("hidden");
-    document.getElementById("touch-controls")?.classList.add("hidden");
+    document.body.classList.remove("in-3d"); // hide the 3D control layer in this 2D mode
     document.getElementById("room-badge")?.classList.add("hidden");
     document.getElementById("btn-mute")?.classList.add("hidden");
     hud.setLevel(progress.info());

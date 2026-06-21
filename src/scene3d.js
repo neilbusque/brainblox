@@ -8,6 +8,7 @@ import { createPlayer, updatePlayer, respawn } from "./player.js";
 import { createAvatar } from "./avatar.js";
 import { createControls, isTouchDevice } from "./controls.js";
 import { createFollowCamera, intentToWorld } from "./camera.js";
+import { createEmotes } from "./emotes.js";
 import { toonMat } from "./gfx.js";
 import { createPostFX } from "./postfx.js";
 import { sfx } from "./audio.js";
@@ -71,7 +72,7 @@ export function createScene3d(spawn, opts = {}) {
   const camera = createFollowCamera(window.innerWidth / window.innerHeight, { dist: opts.camDist, height: opts.camHeight });
   camera.snap(player.pos);
   const controls = createControls();
-  if (isTouchDevice()) document.getElementById("touch-controls").classList.remove("hidden");
+  const emotes = createEmotes();
   const postfx = createPostFX(renderer, scene, camera.cam, { low: LOW });
 
   const bounds = opts.bounds || 0; // clamp player within this radius (0 = none)
@@ -82,7 +83,10 @@ export function createScene3d(spawn, opts = {}) {
     last = now;
     elapsed += dt;
     const inRaw = controls.getInput();
+    const look = controls.getLook();
+    if (look.dx || look.dy) camera.rotate(look.dx, look.dy);
     const dir = intentToWorld(inRaw.fwd, inRaw.right, camera.state.yaw);
+    const moving = Math.hypot(inRaw.fwd, inRaw.right) > 0.05;
     const wasGrounded = player.grounded;
     updatePlayer(player, dt, { moveX: dir.x, moveZ: dir.z, jump: inRaw.jump }, colliders);
     if (inRaw.jump && wasGrounded) sfx.jump();
@@ -91,10 +95,11 @@ export function createScene3d(spawn, opts = {}) {
       if (d > bounds) { player.pos.x *= bounds / d; player.pos.z *= bounds / d; }
     }
     if (player.pos.y < -12) respawn(player, spawn);
+    emotes.tick(dt, moving);
     avatar.root.position.set(player.pos.x, player.pos.y + 0.15, player.pos.z);
     avatar.root.rotation.y = player.facing;
-    avatar.update(player.anim, dt, camera.cam);
-    camera.follow(player.pos, dt);
+    avatar.update(emotes.current() || player.anim, dt, camera.cam);
+    camera.follow(player.pos, dt, { facing: player.facing, moving });
     sun.position.set(player.pos.x + 18, 34, player.pos.z + 12);
     sun.target.position.set(player.pos.x, 0, player.pos.z);
     if (hook) hook(dt, elapsed);
@@ -112,7 +117,7 @@ export function createScene3d(spawn, opts = {}) {
     cancelAnimationFrame(rafId);
     window.removeEventListener("resize", onResize);
     controls.destroy?.();
-    document.getElementById("touch-controls")?.classList.add("hidden");
+    emotes.destroy?.();
     renderer.dispose();
     if (renderer.domElement.parentElement) renderer.domElement.parentElement.removeChild(renderer.domElement);
   }

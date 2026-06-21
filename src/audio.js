@@ -17,6 +17,11 @@ export function unlockAudio() {
   ac();
 }
 
+// shared context so background music rides the same graph as the sfx
+export function getAudioContext() {
+  return ac();
+}
+
 function tone(freq, start, dur, type = "sine", gain = 0.18) {
   const a = ac();
   if (!a) return;
@@ -73,5 +78,23 @@ export const sfx = {
   levelup() {
     const notes = [659, 784, 988, 1319];
     notes.forEach((f, i) => tone(f, i * 0.1, 0.22, "triangle", 0.18));
+  },
+  emote() {
+    tone(660, 0, 0.07, "triangle", 0.12);
+    tone(990, 0.06, 0.1, "triangle", 0.12);
+  },
+  splash() {
+    tone(300, 0, 0.16, "sine", 0.12);
+    tone(180, 0.05, 0.2, "sine", 0.1);
+  },
+  sparkle() {
+    tone(1320, 0, 0.06, "triangle", 0.1);
+    tone(1760, 0.05, 0.08, "triangle", 0.1);
+    tone(2090, 0.1, 0.1, "triangle", 0.08);
+  },
+  highfive() {
+    tone(880, 0, 0.05, "square", 0.12);
+    tone(1320, 0.05, 0.08, "square", 0.12);
+    tone(1760, 0.12, 0.14, "triangle", 0.14);
   },
 };

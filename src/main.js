@@ -6,6 +6,8 @@ import { createPlayer, updatePlayer, respawn } from "./player.js";
 import { createAvatar } from "./avatar.js";
 import { createControls, isTouchDevice } from "./controls.js";
 import { createFollowCamera, intentToWorld } from "./camera.js";
+import { createEmotes } from "./emotes.js";
+import { createMusic } from "./music.js";
 import { setupFullscreen } from "./fullscreen.js";
 import { getQuestion, getCategoryQuestion } from "./questions.js";
 import { createQuiz } from "./quiz.js";
@@ -39,6 +41,7 @@ const LOW = isTouchDevice() && window.devicePixelRatio >= 2;
 
 let current = null; // the mounted activity screen { destroy }
 let playerName = "Player";
+let music = null; // global background music singleton (survives mode changes)
 
 initHub();
 boot();
@@ -47,8 +50,21 @@ async function boot() {
   const choice = await showLobby();
   unlockAudio();
   playerName = choice.name;
+  setupMusic();
   if (choice.mode === "multi") openActivity(() => startRoom(choice, { launchObby, launchExplore }));
   else openExplore();
+}
+
+// background music + its top-right toggle button. created once; keeps playing as
+// the player moves between the world and activities.
+function setupMusic() {
+  music = createMusic();
+  const btn = document.getElementById("music-btn");
+  btn.classList.remove("hidden");
+  const sync = () => { btn.classList.toggle("off", !music.isOn()); btn.textContent = music.isOn() ? "🎵" : "🔈"; };
+  sync();
+  btn.addEventListener("click", () => { music.toggle(); sync(); });
+  if (music.isOn()) music.start();
 }
 
 // launch the multiplayer obby from the room lobby (its own reconnecting world)
@@ -170,12 +186,11 @@ function startGame(choice, onHome) {
   const camera = createFollowCamera(window.innerWidth / window.innerHeight);
   camera.snap(player.pos);
   const controls = createControls();
+  const emotes = createEmotes();
   setupFullscreen("btn-fs");
 
   // ---------- post-processing (needs the camera) ----------
   const postfx = createPostFX(renderer, scene, camera.cam, { highEnd: HIGH_END, low: LOW });
-
-  if (isTouchDevice()) document.getElementById("touch-controls").classList.remove("hidden");
 
   // ---------- ui ----------
   const quiz = createQuiz();
@@ -322,6 +337,7 @@ function startGame(choice, onHome) {
     cp.armed = false;
     state = "quiz";
     controls.setEnabled(false);
+    emotes.setEnabled(false);
     respawnPoint = { ...cp.pos };
     sfx.checkpoint();
 
@@ -357,6 +373,7 @@ function startGame(choice, onHome) {
     }
     state = state === "win" ? "win" : "play";
     controls.setEnabled(true);
+    emotes.setEnabled(true);
   }
 
   function softReset() {
@@ -403,10 +420,15 @@ function startGame(choice, onHome) {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     elapsed += dt;
+    let moving = false;
 
     if (state === "play") {
       const inRaw = controls.getInput();
+      const look = controls.getLook();
+      if (look.dx || look.dy) camera.rotate(look.dx, look.dy);
       const dir = intentToWorld(inRaw.fwd, inRaw.right, camera.state.yaw);
+      moving = Math.hypot(inRaw.fwd, inRaw.right) > 0.05;
+      emotes.tick(dt, moving);
       const wasGrounded = player.grounded;
       const { fell } = updatePlayer(player, dt, { moveX: dir.x, moveZ: dir.z, jump: inRaw.jump }, world.getColliders());
       if (inRaw.jump && wasGrounded) sfx.jump();
@@ -454,21 +476,21 @@ function startGame(choice, onHome) {
         hud.showWin(progress.info().level);
       }
 
-      // broadcast my position
-      if (net) net.sendState({ x: player.pos.x, y: player.pos.y, z: player.pos.z, ry: player.facing, anim: player.anim });
+      // broadcast my position (+ active emote so friends see it)
+      if (net) net.sendState({ x: player.pos.x, y: player.pos.y, z: player.pos.z, ry: player.facing, anim: emotes.current() || player.anim });
     }
 
-    // place + animate local avatar (cheer briefly after a correct answer)
+    // place + animate local avatar (emote > cheer flourish > movement)
     avatar.root.position.set(player.pos.x, player.pos.y + AVATAR_Y_OFFSET, player.pos.z);
     avatar.root.rotation.y = player.facing;
-    const showAnim = elapsed < cheerUntil ? "cheer" : player.anim;
+    const showAnim = emotes.current() || (elapsed < cheerUntil ? "cheer" : player.anim);
     avatar.update(showAnim, dt, camera.cam);
 
     // remote players
     remote.update(dt, camera.cam);
 
     // camera + sun + fill follow the player so shadows + light stay crisp
-    camera.follow(player.pos, dt);
+    camera.follow(player.pos, dt, { facing: player.facing, moving });
     sun.position.set(player.pos.x + 12, player.pos.y + 28, player.pos.z + 8);
     sun.target.position.set(player.pos.x, player.pos.y, player.pos.z);
     fill.position.set(player.pos.x - 10, player.pos.y + 10, player.pos.z - 6);
@@ -536,10 +558,10 @@ function startGame(choice, onHome) {
     playAgainBtn.removeEventListener("click", softReset);
     winHomeBtn.removeEventListener("click", onWinHome);
     controls.destroy?.();
+    emotes.destroy?.();
     if (voice) voice.stop();
     if (net) net.leave();
     document.getElementById("hud").classList.add("hidden");
-    document.getElementById("touch-controls")?.classList.add("hidden");
     document.getElementById("quiz")?.classList.add("hidden");
     document.getElementById("win")?.classList.add("hidden");
     renderer.dispose();
